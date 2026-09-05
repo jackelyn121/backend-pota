@@ -125,3 +125,5 @@ class User(Base):
         "RawPlantReport",
         back_populates="user"
     )
+
+    farmers = relationship("Farmer", back_populates="aew")

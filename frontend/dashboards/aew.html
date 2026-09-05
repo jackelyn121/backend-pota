@@ -425,39 +425,52 @@
 
     /* --- VISIBLE HIGH-CONTRAST STATUS BADGES --- */
     .status-pill {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-size: 11.5px;
-      font-weight: 700;
-      color: #FFFFFF !important;
-      text-shadow: 0 1px 1px rgba(0,0,0,0.2);
-      text-align: center;
-      white-space: nowrap;
-      letter-spacing: 0.02em;
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #FFFFFF !important;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        text-align: center;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
     }
 
+    /* ✅ DRAFT STATUS - Add this */
+    .status-pill.draft {
+        background-color: #6c757d !important;  /* Gray color */
+        color: #FFFFFF !important;
+    }
+
+    /* ✅ PENDING STATUS - Same as Draft */
+    .status-pill.pending {
+        background-color: #6c757d !important;  /* Gray color */
+        color: #FFFFFF !important;
+    }
+
+    /* ✅ SUBMITTED STATUS */
+    .status-pill.submitted,
     .status-pill.active,
     .status-pill.confirmed,
     .status-pill.harvested,
     .status-pill.approved {
-      background-color: var(--status-confirmed) !important;
+        background-color: var(--status-confirmed) !important;
     }
 
-    .status-pill.submitted,
+    /* ✅ REVISION STATUS */
+    .status-pill.revision,
     .status-pill.mediating,
-    .status-pill.pending {
-      background-color: var(--status-submitted) !important;
+    .status-pill.flagged {
+        background-color: #D97706 !important;  /* Orange */
     }
 
-    .status-pill.planted {
-      background-color: #D9531E !important;
-    }
-
+    /* ✅ REJECTED STATUS */
     .status-pill.rejected,
     .status-pill.cancelled {
-      background-color: var(--status-rejected) !important;
+        background-color: var(--status-rejected) !important;
     }
+
 
     /* --- SOLID PRIMARY & OUTLINE BUTTONS --- */
     .btn-primary {
@@ -990,6 +1003,41 @@
 
     .btn-danger { background: #A1382B !important; }
     .btn-danger:hover { background: #84281D !important; }
+
+    /* ============================================================
+      REPORT TAB STATUS COLORS
+    ============================================================ */
+
+    /* FLAGGED status */
+    .status-pill.flagged {
+        background-color: #C0392B !important;
+        color: #FFFFFF !important;
+    }
+
+    /* DRAFT status */
+    .status-pill.draft-status {
+        background-color: #6c757d !important;
+        color: #FFFFFF !important;
+    }
+
+    /* PENDING status */
+    .status-pill.pending-status {
+        background-color: #D97706 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* APPROVED status */
+    .status-pill.approved-status {
+        background-color: #2E7D32 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Submitted to higher level */
+    .status-pill.submitted-level {
+        background-color: #2980B9 !important;
+        color: #FFFFFF !important;
+    }
+
   </style>
 </head>
 <body>
@@ -1241,162 +1289,250 @@
       </section>
 
       <!-- VIEW 2: Planting Intent -->
-      <section class="view" id="view-planting-intent">
-        <div id="plantingIntentListSubview">
-          <div class="main-header">
+<section class="view" id="view-planting-intent">
+    <div id="plantingIntentListSubview">
+        <div class="main-header">
             <div class="header-left">
-              <h1>Planting Intents Tracking</h1>
-              <p>Aggregated crop scheduling and yield forecasting.</p>
+                <h1>Planting Intents</h1>
+                <p>Create and manage planting plans before submitting to reports.</p>
             </div>
             <div class="header-actions">
-              <div class="search-box">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input type="text" id="searchPlantingIntentsInput" placeholder="Search planting intents...">
-              </div>
-              <button class="btn-primary" id="addPlantIntentBtn" type="button">+ Add Plant Intent</button>
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="7"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="searchPlantingIntentsInput" placeholder="Search planting intents...">
+                </div>
+                <button class="btn-primary" id="addPlantIntentBtn" type="button">+ Add Plant Intent</button>
             </div>
-          </div>
-
-          <div class="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Farmer Name</th>
-                  <th>Commodity</th>
-                  <th>Est. Volume</th>
-                  <th>Location</th>
-                  <th>Planting Date</th>
-                  <th>Harvest Date</th>
-                  <th class="center-col">Status</th>
-                </tr>
-              </thead>
-              <tbody id="plantingIntentsTableBody"></tbody>
-            </table>
-          </div>
         </div>
 
-        <!-- SUBMIT PLANTING INTENT -->
-        <div id="submitPlantIntentSubview" class="hidden-element">
-          <div class="main-header">
-            <div class="header-left">
-              <h1>Submit Planting Intent</h1>
-              <p>Log a prospective crop production plan from a verified farmer.</p>
-            </div>
-          </div>
+        <!-- ============================================================
+             SUB-TABS: DRAFT | SUBMITTED
+        ============================================================ -->
+        <div class="sub-tabs" style="display:flex; gap:8px; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:8px;">
+            <button class="sub-tab-btn active" data-tab="draft" type="button" style="padding:8px 20px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:3px solid var(--green); color:var(--green);">
+                Draft Intents
+                <span id="draftCount" style="background:var(--green); color:#fff; border-radius:50%; padding:2px 8px; font-size:11px; margin-left:6px;">0</span>
+            </button>
+            <button class="sub-tab-btn" data-tab="submitted" type="button" style="padding:8px 20px; border:none; background:transparent; font-weight:600; cursor:pointer; color:var(--muted);">
+                Submitted Intents
+                <span id="submittedCount" style="background:var(--muted); color:#fff; border-radius:50%; padding:2px 8px; font-size:11px; margin-left:6px;">0</span>
+            </button>
+        </div>
 
-          <div class="card">
+        <!-- ============================================================
+             DRAFT INTENTS TABLE
+        ============================================================ -->
+        <div id="draftIntentsContainer" class="sub-tab-content">
+            <div class="card">
+                <div class="card-title" style="font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;">
+                    Draft Planting Intents
+                    <span style="font-weight:400; color:var(--muted); font-size:12px; margin-left:8px;">
+                        (Click a row to view details)
+                    </span>
+                </div>
+                <div id="draftIntentsWrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Farmer Name</th>
+                                <th>Commodity</th>
+                                <th>Est. Volume</th>
+                                <th>Location</th>
+                                <th>Planting Date</th>
+                                <th>Harvest Date</th>
+                                <th class="center-col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="draftIntentsTableBody">
+                            <!-- Populated by JavaScript -->
+                            <tr>
+                                <td colspan="7" style="padding:30px; text-align:center; color:#999;">Loading draft intents...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SUBMITTED INTENTS TABLE
+        ============================================================ -->
+        <div id="submittedIntentsContainer" class="sub-tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-title" style="font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;">
+                    Submitted Planting Intents
+                    <span style="font-weight:400; color:var(--muted); font-size:12px; margin-left:8px;">
+                        (Click a row to view details)
+                    </span>
+                </div>
+                <div id="submittedIntentsWrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Farmer Name</th>
+                                <th>Commodity</th>
+                                <th>Est. Volume</th>
+                                <th>Location</th>
+                                <th>Planting Date</th>
+                                <th>Harvest Date</th>
+                                <th class="center-col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submittedIntentsTableBody">
+                            <!-- Populated by JavaScript -->
+                            <tr>
+                                <td colspan="7" style="padding:30px; text-align:center; color:#999;">Loading submitted intents...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SUBMIT PLANTING INTENT FORM
+    ============================================================ -->
+    <div id="submitPlantIntentSubview" class="hidden-element">
+        <div class="main-header">
+            <div class="header-left">
+                <h1>Submit Planting Intent</h1>
+                <p>Log a prospective crop production plan from a verified farmer.</p>
+            </div>
+        </div>
+
+        <div class="card">
             <form id="submitPlantIntentForm">
-              <div class="form-grid-two">
+                <div class="form-grid-two">
+                    <div class="form-field-item">
+                        <label>Farmer Name <span class="req">*</span></label>
+                        <select id="piFarmerName" required>
+                            <option value="">Select Farmer</option>
+                        </select>
+                    </div>
+                    <div class="form-field-item">
+                        <label>Planting Date <span class="req">*</span></label>
+                        <input type="date" id="piPlantDate" required>
+                    </div>
+                    <div class="form-field-item">
+                        <label>Farmer ID <span class="req">*</span></label>
+                        <input type="text" id="piFarmerId" class="input-readonly" readonly required>
+                    </div>
+                    <div class="form-field-item">
+                        <label>Harvest Date <span class="req">*</span></label>
+                        <input type="date" id="piHarvestDate" required>
+                    </div>
+                    <div class="form-field-item">
+                        <label>Commodity <span class="req">*</span></label>
+                        <select id="piCommodity" required>
+                            <option value="">Select Commodity</option>
+                            <option value="Tomato">Tomato</option>
+                            <option value="Eggplant">Eggplant</option>
+                            <option value="Red Onion">Red Onion</option>
+                            <option value="White Onion">White Onion</option>
+                            <option value="Yellow Corn">Yellow Corn</option>
+                            <option value="Squash">Squash</option>
+                            <option value="Garlic">Garlic</option>
+                            <option value="String Beans">String Beans</option>
+                            <option value="Cabbage">Cabbage</option>
+                            <option value="Pepper">Pepper</option>
+                        </select>
+                    </div>
+                    <div class="form-field-item">
+                        <label>Estimated Volume (kg) <span class="req">*</span></label>
+                        <input type="number" id="piVolume" placeholder="e.g. 15000" required>
+                    </div>
+                    <div class="form-field-item form-field-full">
+                        <label>Remarks</label>
+                        <textarea id="piRemarks"></textarea>
+                    </div>
+                </div>
+
+                <div class="actions-right-row">
+                    <button class="btn-outline-report" id="cancelPlantIntentBtn" type="button">Cancel</button>
+                    <button class="btn-primary" type="submit">Submit Intent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PLANTING INTENT DETAILS
+    ============================================================ -->
+    <div id="plantingIntentDetailsSubview" class="hidden-element">
+        <div class="main-header">
+            <div class="header-left">
+                <h1>Planting Intent Details</h1>
+                <p>Review submitted harvest parameters.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="form-grid-two">
                 <div class="form-field-item">
-                  <label>Farmer Name <span class="req">*</span></label>
-                  <select id="piFarmerName" required>
-                    <option value="">Select Farmer</option>
-                  </select>
+                    <label>Planting Intent ID</label>
+                    <input type="text" id="detailPlantingIntentId" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item">
-                  <label>Planting Date <span class="req">*</span></label>
-                  <input type="date" id="piPlantDate" required>
+                    <label>Farmer Name</label>
+                    <input type="text" id="detailFarmerName" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item">
-                  <label>Farmer ID <span class="req">*</span></label>
-                  <input type="text" id="piFarmerId" class="input-readonly" readonly required>
+                    <label>Farmer ID</label>
+                    <input type="text" id="detailFarmerId" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item">
-                  <label>Harvest Date <span class="req">*</span></label>
-                  <input type="date" id="piHarvestDate" required>
+                    <label>Commodity</label>
+                    <input type="text" id="detailCommodity" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item">
-                  <label>Commodity <span class="req">*</span></label>
-                  <input type="text" id="piCommodity" required>
+                    <label>Estimated Volume</label>
+                    <input type="text" id="detailVolume" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item">
-                  <label>Estimated Volume (kg) <span class="req">*</span></label>
-                  <input type="number" id="piVolume" placeholder="e.g. 15000" required>
+                    <label>Location</label>
+                    <input type="text" id="detailLocation" readonly class="input-readonly">
+                </div>
+                <div class="form-field-item">
+                    <label>Planting Date</label>
+                    <input type="text" id="detailPlantingDate" readonly class="input-readonly">
+                </div>
+                <div class="form-field-item">
+                    <label>Harvest Date</label>
+                    <input type="text" id="detailHarvestDate" readonly class="input-readonly">
                 </div>
                 <div class="form-field-item form-field-full">
-                  <label>Remarks</label>
-                  <textarea id="piRemarks"></textarea>
+                    <label>Remarks</label>
+                    <textarea id="detailRemarks" readonly class="input-readonly"></textarea>
                 </div>
-              </div>
-
-              <div class="actions-right-row">
-                <button class="btn-outline-report" id="cancelPlantIntentBtn" type="button">Cancel</button>
-                <button class="btn-primary" type="submit">Submit Intent</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- PLANTING INTENT DETAILS -->
-        <div id="plantingIntentDetailsSubview" class="hidden-element">
-          <div class="main-header">
-            <div class="header-left">
-              <h1>Planting Intent Details</h1>
-              <p>Review submitted harvest parameters.</p>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="form-grid-two">
-              <div class="form-field-item">
-                <label>Planting Intent ID</label>
-                <input type="text" id="detailPlantingIntentId" readonly class="input-readonly">
-              </div>
-              <div id="detailRevisionInfo" style="
-                  margin: 12px 0 16px 0;
-                  padding: 10px 16px;
-                  background: #F7F5F0;
-                  border-radius: 8px;
-                  border-left: 4px solid #D97706;
-                  font-size: 13px;
-                  color: #555;
-                  display: none;
-              "></div>
-              <div class="form-field-item">
-                <label>Farmer Name</label>
-                <input type="text" id="detailFarmerName" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Farmer ID</label>
-                <input type="text" id="detailFarmerId" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Commodity</label>
-                <input type="text" id="detailCommodity" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Estimated Volume</label>
-                <input type="text" id="detailVolume" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Location</label>
-                <input type="text" id="detailLocation" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Planting Date</label>
-                <input type="text" id="detailPlantingDate" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item">
-                <label>Harvest Date</label>
-                <input type="text" id="detailHarvestDate" readonly class="input-readonly">
-              </div>
-              <div class="form-field-item form-field-full">
-                <label>Remarks</label>
-                <textarea id="detailRemarks" readonly class="input-readonly"></textarea>
-              </div>
             </div>
 
+            <!-- Revision Info -->
+            <div id="detailRevisionInfo" style="
+                margin: 12px 0 16px 0;
+                padding: 10px 16px;
+                background: #F7F5F0;
+                border-radius: 8px;
+                border-left: 4px solid #D97706;
+                font-size: 13px;
+                color: #555;
+                display: none;
+            ">
+                <!-- Populated by JavaScript -->
+            </div>
+
+            <!-- Actions -->
             <div class="actions-right-row">
-              <button class="btn-outline-report" id="backFromPlantingIntentDetailsBtn" type="button">Back</button>
-              <button class="btn-primary" id="editPlantingIntentBtn" type="button" style="background: #D97706;">Edit Details</button>
-              <button class="btn-primary" id="submitPlantingIntentBtn" type="button">Confirm & Log Intent</button>
+                <button class="btn-outline-report" id="backFromPlantingIntentDetailsBtn" type="button">Back</button>
+                <button class="btn-primary" id="editPlantingIntentBtn" type="button" style="background: #D97706;">Edit Details</button>
+                <button class="btn-primary" id="submitPlantingIntentBtn" type="button" style="background: #2E7D32;">Submit Report</button>
             </div>
-          </div>
         </div>
-      </section>
+    </div>
+</section>
 
       <!-- VIEW 3: Offtake Request -->
       <section class="view" id="view-offtake-request">
@@ -1665,201 +1801,237 @@
       </section>
 
       <!-- VIEW 6: REPORTS -->
-      <section class="view" id="view-reports">
-        <div id="reportsMainSubview">
-          <div class="main-header">
+<section class="view" id="view-reports">
+    
+    <!-- ============================================================
+         REPORTS MAIN VIEW (List of Reports)
+    ============================================================ -->
+    <div id="reportsMainSubview">
+        <div class="main-header">
             <div class="header-left">
-              <h1>Submit Report</h1>
+                <h1>Submit Report</h1>
+                <p>Submit weekly planting and harvest reports to Municipal Coordinator.</p>
             </div>
-          </div>
-          <div class="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Commodity</th>
-                  <th>Planting Date</th>
-                  <th>Harvest Date</th>
-                  <th>Estimated Yield (kg)</th>
-                  <th>Location</th>
-                  <th class="center-col">Status</th>
-                </tr>
-              </thead>
-              <tbody id="reportsTableBody">
-                <tr>
-                  <td>Onion</td>
-                  <td><input type="date" value="2026-02-01" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:6px; background:#fff;"></td>
-                  <td><input type="date" value="2026-06-15" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:6px; background:#fff;"></td>
-                  <td>67</td>
-                  <td>San Juan</td>
-                  <td class="center-col"><span class="status-pill harvested">Harvested</span></td>
-                </tr>
-                <tr>
-                  <td>Tomato</td>
-                  <td><input type="date" value="2026-03-01" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:6px; background:#fff;"></td>
-                  <td><input type="date" value="2026-05-20" style="padding:6px 10px; border:1.5px solid var(--border); border-radius:6px; background:#fff;"></td>
-                  <td>67</td>
-                  <td>San Pablo</td>
-                  <td class="center-col"><span class="status-pill planted">Planted</span></td>
-                </tr>
-              </tbody>
-            </table>
-            <div style="margin-top: 16px;">
-              <button class="btn-outline-report" id="addReportRowBtn" type="button" style="font-size: 12px; padding: 6px 14px;">Add New Row +</button>
+            <div class="header-actions">
+                <button class="btn-primary" id="createReportBtn" type="button">+ Submit New Report</button>
             </div>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
-            <div>
-              <span class="status-pill" style="background-color: var(--status-rejected) !important; padding: 8px 16px; font-size: 13px;">FLAGGED FOR REVISION</span>
-            </div>
-            <div style="display: flex; gap: 12px;">
-              <button class="btn-outline-report" id="reportsReturnBtn" type="button">Return</button>
-              <button class="btn-outline-report" id="reportsEditBtn" type="button">Edit</button>
-              <button class="btn-primary" id="reportsNextBtn" type="button">Next</button>
-            </div>
-          </div>
         </div>
 
-        <!-- REPORT DETAILS -->
-        <div id="reportsDetailsSubview" class="hidden-element">
-          <div class="main-header">
-            <div class="header-left">
-              <h1>Submit Report</h1>
+        <div class="card">
+            <!-- ============================================================
+                 INDIVIDUAL REPORTS (AEW's own reports)
+            ============================================================ -->
+            <div style="margin-bottom: 24px;">
+                <h3 style="font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;">
+                    Individual Reports
+                    <span style="font-weight:400; color:var(--muted); font-size:12px; margin-left:8px;">
+                        (Click a row to view details)
+                    </span>
+                </h3>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Report ID</th>
+                                <th>Title</th>
+                                <th>Submitted Date</th>
+                                <th class="center-col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="individualReportsTableBody">
+                            <tr>
+                                <td colspan="4" style="padding:30px; text-align:center; color:#999;">No individual reports found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-          </div>
-          <div class="card">
-            <form id="reportNotesForm">
-              <div class="form-grid-two">
-                <div class="form-field-item form-field-full">
-                  <label>Notes <span class="req">*</span></label>
-                  <textarea id="reportNotesInput" style="height: 140px;" placeholder="Add details or remarks regarding this report submission..." required></textarea>
+
+            <!-- ============================================================
+                 SUBMITTED REPORTS (Compilation of submitted reports)
+            ============================================================ -->
+            <div>
+                <h3 style="font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;">
+                    Submitted Reports
+                    <span style="font-weight:400; color:var(--muted); font-size:12px; margin-left:8px;">
+                        (Compilation of submitted reports to Municipal Level)
+                    </span>
+                </h3>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Report ID</th>
+                                <th>Title</th>
+                                <th>Submitted Date</th>
+                                <th class="center-col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submittedReportsTableBody">
+                            <tr>
+                                <td colspan="3" style="padding:30px; text-align:center; color:#999;">No submitted reports found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <div class="form-field-item form-field-full">
-                  <label>Upload Documents <span class="req">*</span></label>
-                  <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="file" id="reportFileInput" style="display: none;" required>
-                    <input type="text" id="reportDocFilename" placeholder="No file chosen" readonly style="flex: 1; cursor: pointer;">
-                    <button class="btn-outline-report" type="button" id="selectReportFileBtn">Select File</button>
-                  </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SUBMIT NEW REPORT (Create Report from Planting Intents)
+    ============================================================ -->
+    <div id="submitReportSubview" class="hidden-element">
+        <div class="main-header">
+            <div class="header-left">
+                <h1>Submit New Report</h1>
+                <p>Select planting intents to include in your weekly report.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <form id="submitReportForm">
+                <!-- ============================================================
+                     SELECT PLANTING INTENTS TO ADD
+                ============================================================ -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; font-size:12.5px; font-weight:700; margin-bottom:8px; color:var(--ink); text-transform:uppercase; letter-spacing:0.02em;">
+                        Planting Intents <span class="req">*</span>
+                    </label>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                        <select id="reportIntentSelect" style="flex:1; min-width:200px; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:13.5px; background:#fff;">
+                            <option value="">Select Planting Intent</option>
+                        </select>
+                        <button type="button" class="btn-primary" id="addIntentToReportBtn" style="white-space:nowrap;">+ Add Row</button>
+                    </div>
+                    
+                    <!-- Selected Intents Table -->
+                    <div style="overflow-x:auto; border:1.5px solid var(--border); border-radius:var(--radius-sm);">
+                        <table style="margin:0;">
+                            <thead>
+                                <tr>
+                                    <th>Planting Intent</th>
+                                    <th>Commodity</th>
+                                    <th>Estimated Volume</th>
+                                    <th>Farmer</th>
+                                    <th class="center-col">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="selectedIntentsTableBody">
+                                <tr>
+                                    <td colspan="5" style="padding:20px; text-align:center; color:#999;">No planting intents selected. Click "Add Row" to add.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-              </div>
+
+                <!-- ============================================================
+                     NOTES / REMARKS
+                ============================================================ -->
+                <div class="form-field-item" style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:var(--ink); text-transform:uppercase; letter-spacing:0.02em;">
+                        Notes / Remarks <span class="req">*</span>
+                    </label>
+                    <textarea id="reportNotesInput" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:13.5px; outline:none; background:#fff; resize:vertical; height:90px;" placeholder="Add details or remarks regarding this report submission..." required></textarea>
+                </div>
+
+                <!-- ============================================================
+                     SUPPORTING DOCUMENTS / ATTACHMENTS
+                ============================================================ -->
+                <div class="form-field-item" style="margin-bottom:20px;">
+                    <label style="display:block; font-size:12.5px; font-weight:700; margin-bottom:6px; color:var(--ink); text-transform:uppercase; letter-spacing:0.02em;">
+                        Supporting Documents / Attachments <span class="req">*</span>
+                    </label>
+                    <div style="display:flex; gap:12px; align-items:center;">
+                        <input type="file" id="reportFileInput" style="display:none;" multiple>
+                        <input type="text" id="reportDocFilename" placeholder="No file chosen" readonly style="flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:13.5px; background:#F4EFE6; cursor:pointer;">
+                        <button type="button" class="btn-outline-report" id="selectReportFileBtn">Select File</button>
+                    </div>
+                    <div id="selectedFilesList" style="margin-top:8px; font-size:12px; color:var(--muted);"></div>
+                </div>
+
+                <!-- ============================================================
+                     ACTIONS
+                ============================================================ -->
+                <div class="actions-right-row">
+                    <button class="btn-outline-report" id="cancelReportBtn" type="button">Cancel</button>
+                    <button class="btn-outline-report" id="saveReportDraftBtn" type="button">Save as Draft</button>
+                    <button class="btn-primary" id="submitReportFinalBtn" type="button">Submit Report</button>
+                </div>
             </form>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
-            <div>
-              <span class="status-pill" style="background-color: var(--status-rejected) !important; padding: 8px 16px; font-size: 13px;">FLAGGED FOR REVISION</span>
-            </div>
-            <div style="display: flex; gap: 12px;">
-              <button class="btn-outline-report" id="reportsNotesBackBtn" type="button">Return</button>
-              <button class="btn-outline-report" id="reportsNotesEditBtn" type="button">Edit</button>
-              <button class="btn-primary" id="reportsNotesSubmitBtn" type="button">Submit Report</button>
-            </div>
-          </div>
         </div>
-      </section>
-
-    </main>
-  </div>
-
-  <!-- MODALS -->
-  <div class="modal-overlay" id="confirmFarmerModal">
-    <div class="modal-box">
-      <h2>Confirm Farmer Registration</h2>
-      <p id="confirmFarmerText">Are you sure all details are accurate before submitting this farmer record?</p>
-      <div class="modal-actions">
-        <button class="btn-outline-report" id="reviewFarmerBtn" type="button">Review / Edit</button>
-        <button class="modal-btn-confirm" id="confirmSaveFarmerBtn" type="button">Confirm & Save</button>
-      </div>
     </div>
-  </div>
 
-  <div class="modal-overlay" id="farmerAddedModal">
-    <div class="modal-box">
-      <h2>Farmer Added!</h2>
-      <p>The farmer record has been verified and registered.</p>
-      <div class="modal-actions">
-        <button class="modal-btn-confirm" id="closeFarmerAddedBtn" type="button">OK</button>
-      </div>
-    </div>
-  </div>
+    <!-- ============================================================
+         REPORT DETAILS VIEW (Individual Report)
+    ============================================================ -->
+    <div id="reportDetailsSubview" class="hidden-element">
+        <div class="main-header">
+            <div class="header-left">
+                <h1>Report Details</h1>
+                <p id="reportDetailsTitle">Viewing report details</p>
+            </div>
+        </div>
 
-  <div class="modal-overlay" id="deleteFarmerModal">
-    <div class="modal-box">
-      <h2>Delete Farmer?</h2>
-      <p>This action cannot be undone.</p>
-      <div class="modal-actions">
-        <button class="btn-outline-report" id="cancelDeleteFarmerBtn" type="button">Cancel</button>
-        <button class="modal-btn-confirm btn-danger" id="confirmDeleteFarmerBtn" type="button">Confirm</button>
-      </div>
-    </div>
-  </div>
+        <div class="card">
+            <!-- Report Info -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px 30px; margin-bottom:20px;">
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Report ID</label>
+                    <p id="detailReportId" style="font-size:14px; font-weight:600;">—</p>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Status</label>
+                    <p id="detailReportStatus" style="font-size:14px; font-weight:600;">—</p>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Submitted Date</label>
+                    <p id="detailReportDate" style="font-size:14px; font-weight:600;">—</p>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Notes</label>
+                    <p id="detailReportNotes" style="font-size:14px;">—</p>
+                </div>
+            </div>
 
-  <div class="modal-overlay" id="plantIntentSubmittedModal">
-    <div class="modal-box">
-      <h2>Planting Intent Submitted!</h2>
-      <p>Your planting intent data has been logged for regional aggregation.</p>
-      <div class="modal-actions">
-        <button class="modal-btn-confirm" id="closePlantIntentSubmittedBtn" type="button">OK</button>
-      </div>
-    </div>
-  </div>
+            <!-- Attachments -->
+            <div style="margin-bottom:20px;">
+                <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Attachments</label>
+                <div id="detailReportAttachments" style="font-size:14px; color:var(--ink);">
+                    No attachments
+                </div>
+            </div>
 
-  <div class="modal-overlay" id="confirmSendOfftakeModal">
-    <div class="modal-box">
-      <h2>Confirm Offtake Submission</h2>
-      <p>Are you sure you want to officially dispatch this offtake memorandum to the buyer?</p>
-      <div class="modal-actions">
-        <button class="btn-outline-report" id="cancelSendOfftakeBtn" type="button">Back</button>
-        <button class="modal-btn-confirm" id="finalSendOfftakeBtn" type="button">Confirm Dispatch</button>
-      </div>
-    </div>
-  </div>
+            <!-- Included Intents -->
+            <div>
+                <label style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.02em;">Included Planting Intents</label>
+                <div style="overflow-x:auto; margin-top:8px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Farmer</th>
+                                <th>Commodity</th>
+                                <th>Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailReportIntentsBody">
+                            <tr><td colspan="3" style="padding:20px; text-align:center; color:#999;">No intents included.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-  <div class="modal-overlay" id="offtakeSubmittedModal">
-    <div class="modal-box">
-      <h2>Offtake Submitted!</h2>
-      <p>The offtake request has been dispatched to the recipient buyer.</p>
-      <div class="modal-actions">
-        <button class="modal-btn-confirm" id="closeOfftakeSubmittedBtn" type="button">OK</button>
-      </div>
+            <!-- Actions -->
+            <div class="actions-right-row" style="margin-top:20px; padding-top:16px; border-top:1.5px solid var(--border);">
+                <button class="btn-outline-report" id="backFromReportDetailsBtn" type="button">Back to Reports</button>
+                <button class="btn-primary" id="editReportBtn" type="button" style="background:#D97706; display:none;">Edit</button>
+                <button class="btn-primary" id="resubmitReportBtn" type="button" style="background:#2E7D32; display:none;">Resubmit</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="modal-overlay" id="reportSuccessModal">
-    <div class="modal-box">
-      <h2>Report Submitted Successfully!</h2>
-      <p>Your monitoring report has been verified and dispatched successfully.</p>
-      <div class="modal-actions">
-        <button class="modal-btn-confirm" id="closeReportSuccessBtn" type="button">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- DELETE ERROR MODAL -->
-  <div class="modal-overlay" id="deleteErrorModal">
-    <div class="modal-box" style="max-width: 500px; text-align: left;">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-        <h2 style="margin: 0; font-size: 20px; color: #C0392B;">Cannot Delete Farmer</h2>
-      </div>
-      <p style="font-size: 14px; color: #2E2A22; margin-bottom: 16px; line-height: 1.6;">
-        This farmer has existing records in the system.
-      </p>
-      <div style="background: #F8F6F2; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; border-left: 4px solid #C0392B;">
-        <p style="font-size: 13px; color: #555; margin: 0 0 8px 0; font-weight: 600;">To delete this farmer, you must first delete or reassign their:</p>
-        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #555;">
-          <li style="margin-bottom: 4px;">Planting Intents</li>
-          <li>Offtake Requests</li>
-        </ul>
-      </div>
-      <p style="font-size: 13px; color: #777; margin-bottom: 20px;">
-        Please check the farmer's records and try again.
-      </p>
-      <div style="display: flex; justify-content: flex-end; gap: 12px;">
-        <button class="btn-primary" id="closeDeleteErrorBtn" type="button" style="background: #5B6B4F;">
-          Got it
-        </button>
-      </div>
-    </div>
-  </div>
+</section>
 
   <!-- SCRIPTS -->
   <script>
