@@ -852,6 +852,7 @@ function initPlantingIntent() {
     const formSubview = document.getElementById("submitPlantIntentSubview");
     const modal = document.getElementById("plantIntentSubmittedModal");
 
+    initPlantingIntentTabs();
     fetchPlantingIntents();
 
     // ADD BUTTON
@@ -962,7 +963,7 @@ function initPlantingIntent() {
             renderPlantingIntentsTable();
             openPlantingIntentDetails(intent);
 
-            alert("✅ Submission pulled back successfully. You can now edit the report.");
+            alert("Submission pulled back successfully. You can now edit the report.");
 
         } catch (error) {
             console.error("Pull error:", error);
@@ -1052,7 +1053,7 @@ function initPlantingIntent() {
         renderPlantingIntentsTable();
         openPlantingIntentDetails(intent);
 
-        alert("✅ Planting Report submitted successfully!\n\nStatus: FOR_MUNICIPAL_VALIDATION");
+        alert("Planting Report submitted successfully!\n\nStatus: FOR_MUNICIPAL_VALIDATION");
 
     } catch (error) {
         console.error("Submit error:", error);
@@ -1079,12 +1080,51 @@ function initPlantingIntent() {
     });
 }
 
-/* ============================================================
-   NORMALIZE PLANTING INTENT
-============================================================ */
 
 /* ============================================================
-   NORMALIZE PLANTING INTENT (Continued)
+   INIT PLANTING INTENT SUB-TABS
+============================================================ */
+
+function initPlantingIntentTabs() {
+    const tabButtons = document.querySelectorAll('.sub-tab-btn');
+    const draftContainer = document.getElementById('draftIntentsContainer');
+    const submittedContainer = document.getElementById('submittedIntentsContainer');
+
+    if (!tabButtons.length) return;
+
+    // Set initial state
+    if (draftContainer) draftContainer.style.display = 'block';
+    if (submittedContainer) submittedContainer.style.display = 'none';
+
+    tabButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            const tab = this.dataset.tab;
+
+            // Update active tab
+            tabButtons.forEach(function(btn) {
+                btn.classList.remove('active');
+                btn.style.borderBottom = 'none';
+                btn.style.color = 'var(--muted)';
+            });
+            this.classList.add('active');
+            this.style.borderBottom = '3px solid var(--green)';
+            this.style.color = 'var(--green)';
+
+            // Show/hide containers
+            if (tab === 'draft') {
+                if (draftContainer) draftContainer.style.display = 'block';
+                if (submittedContainer) submittedContainer.style.display = 'none';
+            } else {
+                if (draftContainer) draftContainer.style.display = 'none';
+                if (submittedContainer) submittedContainer.style.display = 'block';
+            }
+        });
+    });
+}
+
+
+/* ============================================================
+   NORMALIZE PLANTING INTENT
 ============================================================ */
 
 function normalizePlantingIntent(intent) {
@@ -1117,173 +1157,454 @@ function initializePlantingIntentSearch() {
         return;
     }
 
-    searchInput.addEventListener("input", function() {
-        const keyword = this.value.toLowerCase().trim();
+    let searchTimeout;
 
-        if (!keyword) {
-            filteredPlantingIntents = [];
+    searchInput.addEventListener("input", function() {
+        clearTimeout(searchTimeout);
+        
+        searchTimeout = setTimeout(function() {
+            const keyword = document.getElementById("searchPlantingIntentsInput").value.toLowerCase().trim();
+
+            if (!keyword) {
+                filteredPlantingIntents = [];
+                currentPlantingIntentsPage = 1;
+                renderPlantingIntentsTable();
+                return;
+            }
+
+            const searchWords = keyword.split(/\s+/).filter(function(w) { return w.length > 0; });
+
+            const filtered = PLANTING_INTENTS_DATA.filter(function(intent) {
+                const searchableFields = [
+                    intent.farmer_name || "",
+                    intent.commodity || "",
+                    intent.location || "",
+                    intent.remarks || "",
+                    intent.status || "",
+                    String(intent.volume || "")
+                ];
+                const searchableText = searchableFields.join(" ").toLowerCase();
+                return searchWords.every(function(word) {
+                    return searchableText.includes(word);
+                });
+            });
+
+            console.log("🔍 Search for '" + keyword + "' found " + filtered.length + " planting intents");
+
+            filteredPlantingIntents = filtered;
             currentPlantingIntentsPage = 1;
             renderPlantingIntentsTable();
-            return;
-        }
-
-        const searchWords = keyword.split(/\s+/).filter(function(w) { return w.length > 0; });
-
-        const filtered = PLANTING_INTENTS_DATA.filter(function(intent) {
-            const searchableFields = [
-                intent.farmer_name || "",
-                intent.commodity || "",
-                intent.location || "",
-                intent.remarks || "",
-                intent.status || "",
-                String(intent.volume || "")
-            ];
-            const searchableText = searchableFields.join(" ").toLowerCase();
-            return searchWords.every(function(word) {
-                return searchableText.includes(word);
-            });
-        });
-
-        console.log("Search for '" + keyword + "' found " + filtered.length + " planting intents");
-
-        filteredPlantingIntents = filtered;
-        currentPlantingIntentsPage = 1;
-        renderPlantingIntentsTable();
+        }, 300);
     });
 }
+
 
 /* ============================================================
    FETCH PLANTING INTENTS
 ============================================================ */
 
 async function fetchPlantingIntents() {
-    const tbody = document.getElementById("plantingIntentsTableBody");
+    const tbody = document.getElementById('draftIntentsTableBody');
     if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding:30px; text-align:center;">Loading planting intents...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="padding:30px; text-align:center;">Loading planting intents...</td></tr>`;
     }
 
     try {
-        console.log("Fetching planting intents:", PLANTING_INTENTS_ENDPOINT);
+        console.log("📡 Fetching planting intents from:", PLANTING_INTENTS_ENDPOINT);
+        
         const data = await apiRequest(PLANTING_INTENTS_ENDPOINT, { method: "GET" });
-        console.log("Planting Intents API response:", data);
+        console.log("📡 API Response:", data);
 
-        if (!Array.isArray(data)) {
-            throw new Error("Invalid planting intents response. Expected an array.");
+        if (data && data.data && Array.isArray(data.data)) {
+            PLANTING_INTENTS_DATA = data.data.map(normalizePlantingIntent);
+            console.log("Loaded " + PLANTING_INTENTS_DATA.length + " planting intents from paginated response");
+        } 
+        else if (Array.isArray(data)) {
+            PLANTING_INTENTS_DATA = data.map(normalizePlantingIntent);
+            console.log("Loaded " + PLANTING_INTENTS_DATA.length + " planting intents from array response");
+        } 
+        else {
+            console.error("Unexpected response format:", data);
+            throw new Error("Invalid planting intents response. Expected an array or paginated object.");
         }
 
-        PLANTING_INTENTS_DATA = data.map(normalizePlantingIntent);
         filteredPlantingIntents = [];
         currentPlantingIntentsPage = 1;
         renderPlantingIntentsTable();
 
-        console.log("Successfully loaded " + PLANTING_INTENTS_DATA.length + " planting intent(s).");
-
-        setTimeout(function() {
-            const paginationContainer = document.querySelector("#plantingIntentListSubview .pagination-container");
-            if (!paginationContainer) {
-                createPlantingIntentPagination();
-            }
-        }, 100);
-
         return PLANTING_INTENTS_DATA;
+        
     } catch (error) {
         console.error("Unable to load planting intents:", error);
         PLANTING_INTENTS_DATA = [];
+        
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" style="padding:30px; text-align:center; color:#C0392B;">Failed to load planting intents.<br><small>${escapeHtml(error.message || "Please check the FastAPI server.")}</small></td></tr>`;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="padding:30px; text-align:center; color:#C0392B;">
+                        <div style="font-size:24px; margin-bottom:8px;">❌</div>
+                        <strong>Failed to load planting intents.</strong>
+                        <br>
+                        <small>${escapeHtml(error.message || "Please check the FastAPI server.")}</small>
+                        <br><br>
+                        <button onclick="fetchPlantingIntents()" style="
+                            padding: 8px 20px; 
+                            background: #2E7D32; 
+                            color: #fff; 
+                            border: none; 
+                            border-radius: 6px; 
+                            cursor: pointer; 
+                            font-weight: 600;
+                        ">
+                            🔄 Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
         }
+        
         handleAuthError(error);
         return [];
     }
 }
+
+
 
 /* ============================================================
    RENDER PLANTING INTENTS TABLE
 ============================================================ */
 
 function renderPlantingIntentsTable() {
-    const tbody = document.getElementById("plantingIntentsTableBody");
-    if (!tbody) {
-        console.warn("plantingIntentsTableBody not found.");
+    const draftTbody = document.getElementById('draftIntentsTableBody');
+    const submittedTbody = document.getElementById('submittedIntentsTableBody');
+
+    if (!draftTbody || !submittedTbody) {
+        console.warn('Planting intent table bodies not found.');
         return;
     }
 
-    tbody.innerHTML = "";
+    // Clear tables
+    draftTbody.innerHTML = '';
+    submittedTbody.innerHTML = '';
 
-    let dataSource = PLANTING_INTENTS_DATA;
-    let totalCount = dataSource.length;
+    const dataSource = (filteredPlantingIntents && filteredPlantingIntents.length > 0) 
+        ? filteredPlantingIntents 
+        : PLANTING_INTENTS_DATA;
 
-    if (filteredPlantingIntents && filteredPlantingIntents.length > 0) {
-        dataSource = filteredPlantingIntents;
-        totalCount = filteredPlantingIntents.length;
-    }
+    console.log("📊 Rendering intents from dataSource:", dataSource.length);
 
-    if (dataSource.length === 0) {
-        const message = (filteredPlantingIntents && filteredPlantingIntents.length === 0)
-            ? "No planting intents match your search."
-            : "No planting intents found.";
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:30px; text-align:center; color:#777;">${message}</td></tr>`;
-        return;
-    }
-
-    const start = (currentPlantingIntentsPage - 1) * plantingIntentsPerPage;
-    const end = start + plantingIntentsPerPage;
-    const paginatedItems = dataSource.slice(start, end);
-
-    if (paginatedItems.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="padding:30px; text-align:center; color:#777;">No planting intents found on this page.</td></tr>`;
-        return;
-    }
-
-    paginatedItems.forEach(function(intent) {
-        const tr = document.createElement("tr");
-        tr.className = "clickable-row";
-
-        const farmerName = intent.farmer_name || "-";
-        const commodity = intent.commodity || "-";
-        const volume = formatPlantingVolume(intent.volume);
-        const location = intent.location || "-";
-        const plantingDate = formatPlantingDate(intent.planting_date);
-        const harvestDate = formatPlantingDate(intent.harvest_date);
-        const status = intent.status || "Pending";
-
-        let statusClass = "pending";
-        if (status === "FOR_MUNICIPAL_VALIDATION" || status === "FOR_PROVINCIAL_VALIDATION" || status === "FOR_DA_RFO_VALIDATION") {
-            statusClass = "submitted";
-        } else if (status === "FINAL_APPROVED") {
-            statusClass = "approved";
-        }
-
-        tr.innerHTML = `
-            <td><span class="pill">${escapeHtml(farmerName)}</span></td>
-            <td><span class="pill">${escapeHtml(commodity)}</span></td>
-            <td><span class="pill">${escapeHtml(volume)}</span></td>
-            <td><span class="pill">${escapeHtml(location)}</span></td>
-            <td><span class="pill">${escapeHtml(plantingDate)}</span></td>
-            <td><span class="pill">${escapeHtml(harvestDate)}</span></td>
-            <td><span class="status-pill ${statusClass}">${escapeHtml(status)}</span></td>
-        `;
-
-        tr.addEventListener("click", function() {
-            openPlantingIntentDetails(intent);
-        });
-
-        tbody.appendChild(tr);
+    const draftIntents = dataSource.filter(function(intent) {
+        const status = (intent.status || 'Pending').toLowerCase();
+        return status === 'draft' || status === 'pending';
     });
 
-    updatePlantingIntentPagination(totalCount);
+    const submittedIntents = dataSource.filter(function(intent) {
+        const status = (intent.status || '').toLowerCase();
+        return status === 'submitted' || 
+               status === 'for_municipal_validation' || 
+               status === 'for_provincial_validation' || 
+               status === 'for_da_rfo_validation' ||
+               status === 'revision_required' ||
+               status === 'final_approved';
+    });
+
+    console.log("Draft intents:", draftIntents.length);
+    console.log("Submitted intents:", submittedIntents.length);
+
+    // Update counters
+    const draftCount = document.getElementById('draftCount');
+    const submittedCount = document.getElementById('submittedCount');
+    if (draftCount) draftCount.textContent = draftIntents.length;
+    if (submittedCount) submittedCount.textContent = submittedIntents.length;
+
+    // ============================================================
+    // RENDER DRAFT INTENTS
+    // ============================================================
+    if (draftIntents.length === 0) {
+        draftTbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="padding:40px; text-align:center; color:#999;">
+                    <div style="font-size:48px; margin-bottom:12px;">📋</div>
+                    <div style="font-size:16px; font-weight:600; color:#555;">No Draft Intents</div>
+                    <div style="font-size:13px; color:#999; margin-top:4px;">
+                        Click <strong>"Add Plant Intent"</strong> to create your first planting plan.
+                    </div>
+                </td>
+            </tr>
+        `;
+    } else {
+        draftIntents.forEach(function(intent) {
+            const tr = createPlantingIntentRow(intent, 'draft');
+            draftTbody.appendChild(tr);
+        });
+    }
+
+    // ============================================================
+    // RENDER SUBMITTED INTENTS
+    // ============================================================
+    if (submittedIntents.length === 0) {
+        submittedTbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="padding:40px; text-align:center; color:#999;">
+                    <div style="font-size:48px; margin-bottom:12px;">📤</div>
+                    <div style="font-size:16px; font-weight:600; color:#555;">No Submitted Intents</div>
+                    <div style="font-size:13px; color:#999; margin-top:4px;">
+                        Submit a draft intent to see it here.
+                    </div>
+                </td>
+            </tr>
+        `;
+    } else {
+        submittedIntents.forEach(function(intent) {
+            const tr = createPlantingIntentRow(intent, 'submitted');
+            submittedTbody.appendChild(tr);
+        });
+    }
 }
+
+// ============================================================
+// SUBMIT PLANTING INTENT STATUS (Just changes to Submitted)
+// ============================================================
+
+// ============================================================
+// SUBMIT PLANTING INTENT STATUS (Just changes to Submitted)
+// ============================================================
+
+async function submitPlantingIntentStatus(intent) {
+    if (!intent) {
+        alert("No planting intent selected.");
+        return;
+    }
+
+    // Confirm with user
+    if (!confirm(`Are you sure you want to submit "${intent.commodity}" for ${intent.farmer_name}?\n\nThis will change the status to "Submitted".`)) {
+        return;
+    }
+
+    const submitBtn = document.getElementById("submitPlantingIntentBtn");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+    }
+
+    try {
+        // CORRECT API: Update status only - use the planting-intents endpoint
+        const url = PLANTING_INTENTS_ENDPOINT + intent.planting_intent_id;
+        const token = getAuthToken();
+
+        console.log("📡 Updating status to Submitted:", url);
+
+        const response = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token ? "Bearer " + token : ""
+            },
+            body: JSON.stringify({
+                status: "Submitted"
+            })
+        });
+
+        if (!response.ok) {
+            let errorData = null;
+            try { errorData = await response.json(); } catch(e) {}
+            let errorMessage = "Failed to update status.";
+            if (errorData && errorData.detail) errorMessage = errorData.detail;
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log("Update successful:", result);
+
+        // Update local data
+        intent.status = "Submitted";
+        intent.updated_at = new Date().toISOString();
+
+        // Update the data in the main array
+        const index = PLANTING_INTENTS_DATA.findIndex(function(item) {
+            return item.planting_intent_id === intent.planting_intent_id;
+        });
+        if (index !== -1) {
+            PLANTING_INTENTS_DATA[index] = intent;
+        }
+
+        // Refresh the table
+        renderPlantingIntentsTable();
+
+        // Update the details view
+        openPlantingIntentDetails(intent);
+
+        alert(`"${intent.commodity}" has been submitted successfully!`);
+
+    } catch (error) {
+        console.error("Submit error:", error);
+        alert("Failed to submit intent.\n\n" + error.message);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Intent";
+        }
+    }
+}
+
+// ============================================================
+// PULL PLANTING INTENT (Revert to Draft)
+// ============================================================
+
+// ============================================================
+// PULL PLANTING INTENT (Revert to Draft)
+// ============================================================
+
+async function pullPlantingIntent(intent) {
+    if (!intent) {
+        alert("No planting intent selected.");
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to pull "${intent.commodity}" back to Draft?\n\nThis will revert the status to "Draft".`)) {
+        return;
+    }
+
+    const submitBtn = document.getElementById("submitPlantingIntentBtn");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Pulling...";
+    }
+
+    try {
+        // CORRECT API: Update status only
+        const url = PLANTING_INTENTS_ENDPOINT + intent.planting_intent_id;
+        const token = getAuthToken();
+
+        console.log("📡 Updating status to Draft:", url);
+
+        const response = await fetch(url, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token ? "Bearer " + token : ""
+            },
+            body: JSON.stringify({
+                status: "Draft"
+            })
+        });
+
+        if (!response.ok) {
+            let errorData = null;
+            try { errorData = await response.json(); } catch(e) {}
+            let errorMessage = "Failed to update status.";
+            if (errorData && errorData.detail) errorMessage = errorData.detail;
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        console.log("Pull successful:", result);
+
+        // Update local data
+        intent.status = "Draft";
+        intent.updated_at = new Date().toISOString();
+
+        // Update the data in the main array
+        const index = PLANTING_INTENTS_DATA.findIndex(function(item) {
+            return item.planting_intent_id === intent.planting_intent_id;
+        });
+        if (index !== -1) {
+            PLANTING_INTENTS_DATA[index] = intent;
+        }
+
+        // Refresh the table
+        renderPlantingIntentsTable();
+
+        // Update the details view
+        openPlantingIntentDetails(intent);
+
+        alert(`"${intent.commodity}" has been pulled back to Draft.`);
+
+    } catch (error) {
+        console.error("❌ Pull error:", error);
+        alert("Failed to pull intent.\n\n" + error.message);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Pull Submission";
+        }
+    }
+}
+
+
+/* ============================================================
+   CREATE PLANTING INTENT ROW
+============================================================ */
+
+function createPlantingIntentRow(intent, type) {
+    const tr = document.createElement('tr');
+    tr.className = 'clickable-row';
+
+    const farmerName = intent.farmer_name || '-';
+    const commodity = intent.commodity || '-';
+    const volume = formatPlantingVolume(intent.volume);
+    const location = intent.location || '-';
+    const plantingDate = formatPlantingDate(intent.planting_date);
+    const harvestDate = formatPlantingDate(intent.harvest_date);
+    const status = intent.status || 'Pending';
+
+    let statusText = '';
+    let statusClass = '';
+
+    if (type === 'draft') {
+        statusText = 'Draft';
+        statusClass = 'draft';
+    } else {
+        const statusLower = status.toLowerCase();
+        
+        if (statusLower === 'pending') {
+            statusText = 'Draft';
+            statusClass = 'draft';
+        } else if (statusLower === 'submitted' || 
+                   statusLower === 'for_municipal_validation' || 
+                   statusLower === 'for_provincial_validation' || 
+                   statusLower === 'for_da_rfo_validation') {
+            statusText = 'Submitted';
+            statusClass = 'submitted';
+        } else if (statusLower === 'revision_required') {
+            statusText = 'Revision Required';
+            statusClass = 'revision';
+        } else if (statusLower === 'final_approved') {
+            statusText = 'Approved';
+            statusClass = 'approved';
+        } else {
+            statusText = status;
+            statusClass = 'pending';
+        }
+    }
+
+    tr.innerHTML = `
+        <td><span class="pill">${escapeHtml(farmerName)}</span></td>
+        <td><span class="pill">${escapeHtml(commodity)}</span></td>
+        <td><span class="pill">${escapeHtml(volume)}</span></td>
+        <td><span class="pill">${escapeHtml(location)}</span></td>
+        <td><span class="pill">${escapeHtml(plantingDate)}</span></td>
+        <td><span class="pill">${escapeHtml(harvestDate)}</span></td>
+        <td class="center-col">
+            <span class="status-pill ${statusClass}">${escapeHtml(statusText)}</span>
+        </td>
+    `;
+
+    tr.addEventListener('click', function(e) {
+        openPlantingIntentDetails(intent);
+    });
+
+    return tr;
+}
+
+
 
 /* ============================================================
    OPEN PLANTING INTENT DETAILS
 ============================================================ */
 
-/* ============================================================
-   OPEN PLANTING INTENT DETAILS - FIXED
-============================================================ */
-
 function openPlantingIntentDetails(intent) {
-    console.log("Selected Planting Intent:", intent);
+    console.log("📋 Opening details for:", intent);
 
     const list = document.getElementById("plantingIntentListSubview");
     const details = document.getElementById("plantingIntentDetailsSubview");
@@ -1298,7 +1619,7 @@ function openPlantingIntentDetails(intent) {
     if (list) list.classList.add("hidden-element");
     details.classList.remove("hidden-element");
 
-    // Display data
+    // Populate details
     setValue("detailPlantingIntentId", intent.planting_intent_id || "");
     setValue("detailFarmerName", intent.farmer_name || "");
     setValue("detailFarmerId", intent.farmer_id || "");
@@ -1309,22 +1630,20 @@ function openPlantingIntentDetails(intent) {
     setValue("detailHarvestDate", formatPlantingDate(intent.harvest_date));
     setValue("detailRemarks", intent.remarks || "");
 
-    // Display revision info
+    // Revision info
     const revisionInfo = document.getElementById("detailRevisionInfo");
     if (revisionInfo) {
         if (intent.revision_count !== undefined && intent.revision_count > 0) {
             revisionInfo.textContent = "Revision #" + intent.revision_count + " | Last updated: " + formatPlantingDate(intent.updated_at || intent.created_at);
             revisionInfo.style.display = "block";
         } else {
-            revisionInfo.textContent = "Original submission";
-            revisionInfo.style.display = "block";
+            revisionInfo.style.display = "none";
         }
     }
 
     // Reset Edit Mode
     window.isEditingPlantingIntent = false;
 
-    // Make all fields readonly
     const detailInputs = details.querySelectorAll("input, textarea");
     detailInputs.forEach(function(input) {
         input.readOnly = true;
@@ -1339,29 +1658,28 @@ function openPlantingIntentDetails(intent) {
 
     if (backBtn) backBtn.style.display = "inline-flex";
 
-    // ✅ CHECK STATUS - Use the actual status from the intent object
-    const status = intent.status || "PENDING";
-    console.log("Current status:", status);
-    
-    // ✅ Check if status is DRAFT or PENDING (editable states)
-    const isEditable = status === "DRAFT" || status === "PENDING" || status === "Pending";
-    const isSubmitted = status === "FOR_MUNICIPAL_VALIDATION" || 
-                        status === "FOR_PROVINCIAL_VALIDATION" || 
-                        status === "FOR_DA_RFO_VALIDATION" ||
-                        status === "SUBMITTED";
+    // Check status - determine if editable
+    const status = (intent.status || "PENDING").toLowerCase();
+    const isEditable = status === 'draft' || status === 'pending';
+    const isSubmitted = status === 'submitted' || 
+                        status === 'for_municipal_validation' || 
+                        status === 'for_provincial_validation' || 
+                        status === 'for_da_rfo_validation';
 
-    console.log("isEditable:", isEditable);
-    console.log("isSubmitted:", isSubmitted);
+    console.log("📊 Status:", status, "| Editable:", isEditable, "| Submitted:", isSubmitted);
 
     if (isSubmitted) {
-        // Already submitted - Show "Pull Submission" button
+        // Already submitted - Show "Pull" button (to revert to Draft)
         if (submitBtn) {
             submitBtn.textContent = "Pull Submission";
             submitBtn.style.display = "inline-flex";
             submitBtn.style.background = "#D97706";
             submitBtn.style.color = "#fff";
             submitBtn.disabled = false;
-            submitBtn.title = "Pull back this submission for revisions";
+            submitBtn.title = "Pull back this submission to Draft";
+            submitBtn.onclick = function() {
+                pullPlantingIntent(intent);
+            };
         }
         // Disable Edit button
         if (editBtn) {
@@ -1371,36 +1689,48 @@ function openPlantingIntentDetails(intent) {
             editBtn.disabled = true;
         }
     } else if (isEditable) {
-        // ✅ DRAFT/PENDING - Show "Submit Report" button
+        // DRAFT/PENDING - Show "Submit" button (just changes status to Submitted)
         if (submitBtn) {
-            submitBtn.textContent = "Submit Report";
+            submitBtn.textContent = "Submit Intent";
             submitBtn.style.display = "inline-flex";
             submitBtn.style.background = "#2E7D32";
             submitBtn.style.color = "#fff";
             submitBtn.disabled = false;
-            submitBtn.title = "Submit this report for validation";
+            submitBtn.title = "Submit this intent (status will change to Submitted)";
+            submitBtn.onclick = function() {
+                submitPlantingIntentStatus(intent);
+            };
         }
-        // ✅ ENABLE Edit button
+        // Enable Edit button
         if (editBtn) {
             editBtn.textContent = "Edit Details";
             editBtn.style.background = "#D97706";
             editBtn.style.cursor = "pointer";
             editBtn.disabled = false;
+            editBtn.onclick = function() {
+                togglePlantingIntentEditMode();
+            };
         }
     } else {
-        // Fallback - unknown status
+        // Fallback
         if (submitBtn) {
-            submitBtn.textContent = "Submit Report";
+            submitBtn.textContent = "Submit Intent";
             submitBtn.style.display = "inline-flex";
             submitBtn.style.background = "#2E7D32";
             submitBtn.style.color = "#fff";
             submitBtn.disabled = false;
+            submitBtn.onclick = function() {
+                submitPlantingIntentStatus(intent);
+            };
         }
         if (editBtn) {
             editBtn.textContent = "Edit Details";
             editBtn.style.background = "#D97706";
             editBtn.style.cursor = "pointer";
             editBtn.disabled = false;
+            editBtn.onclick = function() {
+                togglePlantingIntentEditMode();
+            };
         }
     }
 
@@ -1591,6 +1921,8 @@ async function savePlantingIntentChanges() {
             remarks: updatedData.remarks || ""
         };
 
+        console.log("Payload being sent:", payload);
+
         const url = PLANTING_INTENTS_ENDPOINT + intent.planting_intent_id;
         const token = getAuthToken();
 
@@ -1770,6 +2102,192 @@ function updatePlantingIntentPagination(totalCount) {
     }
     updatePaginationUI(paginationContainer, totalCount);
 }
+
+function createPlantingIntentPagination() {
+    const listSubview = document.getElementById("plantingIntentListSubview");
+    const card = listSubview?.querySelector(".card");
+    if (!card) {
+        console.warn("Card not found for pagination");
+        return;
+    }
+    if (card.querySelector(".pagination-container")) return;
+
+    const paginationDiv = document.createElement("div");
+    paginationDiv.className = "pagination-container";
+    paginationDiv.innerHTML = `
+        <span class="pagination-info" id="plantingIntentPaginationInfo">Showing 0 of 0</span>
+        <div class="pagination-controls">
+            <button class="btn-page" id="prevPlantingIntentPageBtn" type="button" disabled>&laquo; Prev</button>
+            <div id="plantingIntentPageNumberBtns" class="page-numbers-wrap"></div>
+            <button class="btn-page" id="nextPlantingIntentPageBtn" type="button">Next &raquo;</button>
+        </div>
+    `;
+
+    card.appendChild(paginationDiv);
+
+    document.getElementById("prevPlantingIntentPageBtn")?.addEventListener("click", function() {
+        if (currentPlantingIntentsPage > 1) {
+            currentPlantingIntentsPage--;
+            renderPlantingIntentsTable();
+        }
+    });
+
+    document.getElementById("nextPlantingIntentPageBtn")?.addEventListener("click", function() {
+        const dataSource = (filteredPlantingIntents && filteredPlantingIntents.length > 0) 
+            ? filteredPlantingIntents 
+            : PLANTING_INTENTS_DATA;
+        const totalPages = Math.max(1, Math.ceil(dataSource.length / plantingIntentsPerPage));
+        if (currentPlantingIntentsPage < totalPages) {
+            currentPlantingIntentsPage++;
+            renderPlantingIntentsTable();
+        }
+    });
+}
+
+function updatePaginationUI(container, totalCount) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / plantingIntentsPerPage));
+    if (currentPlantingIntentsPage > totalPages) currentPlantingIntentsPage = totalPages;
+
+    const start = totalCount === 0 ? 0 : ((currentPlantingIntentsPage - 1) * plantingIntentsPerPage) + 1;
+    const end = Math.min(currentPlantingIntentsPage * plantingIntentsPerPage, totalCount);
+
+    const info = container.querySelector(".pagination-info");
+    if (info) info.textContent = "Showing " + start + "-" + end + " of " + totalCount + " planting intents";
+
+    const prevBtn = container.querySelector("#prevPlantingIntentPageBtn");
+    if (prevBtn) prevBtn.disabled = currentPlantingIntentsPage <= 1;
+
+    const nextBtn = container.querySelector("#nextPlantingIntentPageBtn");
+    if (nextBtn) nextBtn.disabled = currentPlantingIntentsPage >= totalPages;
+
+    const pageBtns = container.querySelector("#plantingIntentPageNumberBtns");
+    if (pageBtns) {
+        pageBtns.innerHTML = "";
+        const totalPagesToShow = Math.min(totalPages, 5);
+
+        for (let i = 1; i <= totalPagesToShow; i++) {
+            const pageBtn = document.createElement("button");
+            pageBtn.className = "btn-page" + (i === currentPlantingIntentsPage ? " active" : "");
+            pageBtn.textContent = i;
+            pageBtn.type = "button";
+            pageBtn.addEventListener("click", function() {
+                currentPlantingIntentsPage = i;
+                renderPlantingIntentsTable();
+            });
+            pageBtns.appendChild(pageBtn);
+        }
+
+        if (totalPages > 5) {
+            const ellipsis = document.createElement("span");
+            ellipsis.textContent = "...";
+            ellipsis.style.padding = "0 8px";
+            ellipsis.style.color = "#777";
+            pageBtns.appendChild(ellipsis);
+
+            const lastBtn = document.createElement("button");
+            lastBtn.className = "btn-page" + (totalPages === currentPlantingIntentsPage ? " active" : "");
+            lastBtn.textContent = totalPages;
+            lastBtn.type = "button";
+            lastBtn.addEventListener("click", function() {
+                currentPlantingIntentsPage = totalPages;
+                renderPlantingIntentsTable();
+            });
+            pageBtns.appendChild(lastBtn);
+        }
+    }
+}
+
+function createPlantingIntentPagination() {
+    const listSubview = document.getElementById("plantingIntentListSubview");
+    const card = listSubview?.querySelector(".card");
+    if (!card) {
+        console.warn("Card not found for pagination");
+        return;
+    }
+    if (card.querySelector(".pagination-container")) return;
+
+    const paginationDiv = document.createElement("div");
+    paginationDiv.className = "pagination-container";
+    paginationDiv.innerHTML = `
+        <span class="pagination-info" id="plantingIntentPaginationInfo">Showing 0 of 0</span>
+        <div class="pagination-controls">
+            <button class="btn-page" id="prevPlantingIntentPageBtn" type="button" disabled>&laquo; Prev</button>
+            <div id="plantingIntentPageNumberBtns" class="page-numbers-wrap"></div>
+            <button class="btn-page" id="nextPlantingIntentPageBtn" type="button">Next &raquo;</button>
+        </div>
+    `;
+
+    card.appendChild(paginationDiv);
+
+    document.getElementById("prevPlantingIntentPageBtn")?.addEventListener("click", function() {
+        if (currentPlantingIntentsPage > 1) {
+            currentPlantingIntentsPage--;
+            renderPlantingIntentsTable();
+        }
+    });
+
+    document.getElementById("nextPlantingIntentPageBtn")?.addEventListener("click", function() {
+        const totalPages = Math.max(1, Math.ceil(PLANTING_INTENTS_DATA.length / plantingIntentsPerPage));
+        if (currentPlantingIntentsPage < totalPages) {
+            currentPlantingIntentsPage++;
+            renderPlantingIntentsTable();
+        }
+    });
+}
+
+function updatePaginationUI(container, totalCount) {
+    const totalPages = Math.max(1, Math.ceil(totalCount / plantingIntentsPerPage));
+    if (currentPlantingIntentsPage > totalPages) currentPlantingIntentsPage = totalPages;
+
+    const start = totalCount === 0 ? 0 : ((currentPlantingIntentsPage - 1) * plantingIntentsPerPage) + 1;
+    const end = Math.min(currentPlantingIntentsPage * plantingIntentsPerPage, totalCount);
+
+    const info = container.querySelector(".pagination-info");
+    if (info) info.textContent = "Showing " + start + "-" + end + " of " + totalCount + " planting intents";
+
+    const prevBtn = container.querySelector("#prevPlantingIntentPageBtn");
+    if (prevBtn) prevBtn.disabled = currentPlantingIntentsPage <= 1;
+
+    const nextBtn = container.querySelector("#nextPlantingIntentPageBtn");
+    if (nextBtn) nextBtn.disabled = currentPlantingIntentsPage >= totalPages;
+
+    const pageBtns = container.querySelector("#plantingIntentPageNumberBtns");
+    if (pageBtns) {
+        pageBtns.innerHTML = "";
+        const totalPagesToShow = Math.min(totalPages, 5);
+
+        for (let i = 1; i <= totalPagesToShow; i++) {
+            const pageBtn = document.createElement("button");
+            pageBtn.className = "btn-page" + (i === currentPlantingIntentsPage ? " active" : "");
+            pageBtn.textContent = i;
+            pageBtn.type = "button";
+            pageBtn.addEventListener("click", function() {
+                currentPlantingIntentsPage = i;
+                renderPlantingIntentsTable();
+            });
+            pageBtns.appendChild(pageBtn);
+        }
+
+        if (totalPages > 5) {
+            const ellipsis = document.createElement("span");
+            ellipsis.textContent = "...";
+            ellipsis.style.padding = "0 8px";
+            ellipsis.style.color = "#777";
+            pageBtns.appendChild(ellipsis);
+
+            const lastBtn = document.createElement("button");
+            lastBtn.className = "btn-page" + (totalPages === currentPlantingIntentsPage ? " active" : "");
+            lastBtn.textContent = totalPages;
+            lastBtn.type = "button";
+            lastBtn.addEventListener("click", function() {
+                currentPlantingIntentsPage = totalPages;
+                renderPlantingIntentsTable();
+            });
+            pageBtns.appendChild(lastBtn);
+        }
+    }
+}
+
 
 function createPlantingIntentPagination() {
     const listSubview = document.getElementById("plantingIntentListSubview");
