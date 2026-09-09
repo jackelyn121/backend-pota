@@ -2206,10 +2206,574 @@ function createPlantingIntentPagination() {
     }
     if (card.querySelector(".pagination-container")) return;
 
+<<<<<<< Updated upstream
     const paginationDiv = document.createElement("div");
     paginationDiv.className = "pagination-container";
     paginationDiv.innerHTML = `
         <span class="pagination-info" id="plantingIntentPaginationInfo">Showing 0 of 0</span>
+=======
+    tbody.innerHTML = filteredIntents.map(function(intent) {
+        const status = intent.status || "NOT PLANTED";
+        const statusUpper = status.toUpperCase();
+        const statusClass = 'status-pill-' + statusUpper.toLowerCase().replace(/ /g, '-');
+        
+        return `
+            <tr class="clickable-row" data-intent-id="${intent.planting_intent_id}">
+                <td>#${intent.report_id}</td>
+                <td>${escapeHtml(intent.title)}</td>
+                <td>${intent.submitted_at ? formatPlantingDate(intent.submitted_at) : '-'}</td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px; justify-content:center; flex-wrap:wrap;">
+                        <span class="status-pill ${statusClass}">${escapeHtml(statusUpper)}</span>
+                        <select class="finalized-status-select" data-intent-id="${intent.planting_intent_id}" style="padding:4px 8px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:11px; background:#fff; cursor:pointer;">
+                            <option value="NOT PLANTED" ${statusUpper === 'NOT PLANTED' ? 'selected' : ''}>Not Planted</option>
+                            <option value="PLANTED" ${statusUpper === 'PLANTED' ? 'selected' : ''}>Planted</option>
+                            <option value="HARVESTED" ${statusUpper === 'HARVESTED' ? 'selected' : ''}>Harvested</option>
+                            <option value="MEDIATING" ${statusUpper === 'MEDIATING' ? 'selected' : ''}>Mediating</option>
+                        </select>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Attach change event to status selects
+    tbody.querySelectorAll('.finalized-status-select').forEach(function(select) {
+        select.addEventListener('change', function(e) {
+            e.stopPropagation();
+            const intentId = this.dataset.intentId;
+            const newStatus = this.value;
+            updateFinalizedIntentStatus(intentId, newStatus);
+        });
+    });
+
+    // Attach click event to rows
+    tbody.querySelectorAll('.clickable-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.tagName === 'SELECT') return;
+            const intentId = this.dataset.intentId;
+            openFinalizedIntentDetails(intentId);
+        });
+    });
+}
+
+// ============================================================
+// UPDATE FINALIZED INTENT STATUS
+// ============================================================
+
+async function updateFinalizedIntentStatus(intentId, newStatus) {
+    try {
+        // Update the intent's finalized_status (you may need to add this field to your model)
+        // For now, we'll update it in the local data and re-render
+        const intent = PLANTING_INTENTS_DATA.find(function(i) {
+            return i.planting_intent_id === intentId;
+        });
+        
+        if (intent) {
+            intent.finalized_status = newStatus;
+            
+            // Also update in the allIndividualReports array
+            const reportIntent = allIndividualReports.find(function(r) {
+                return r.planting_intent_id === intentId;
+            });
+            if (reportIntent) {
+                reportIntent.status = newStatus;
+            }
+        }
+        
+        // Re-render
+        renderFinalizedIntents(allIndividualReports);
+        
+        console.log(`Status updated to ${newStatus} for intent ${intentId}`);
+        
+    } catch (error) {
+        console.error("Failed to update status:", error);
+        alert("Failed to update status. Please try again.");
+    }
+}
+
+// ============================================================
+// CREATE REPORT FROM PLANTING INTENTS
+// ============================================================
+
+async function createReportFromIntents(intentIds, notes, attachments) {
+    try {
+        // Create the report first
+        const reportData = {
+            planting_intent_ids: intentIds,
+            notes: notes,
+            status: "NOT PLANTED" // Default status for individual reports
+        };
+        
+        const response = await apiRequest(`${API_BASE_URL}/api/raw-plant-reports/from-intents`, {
+            method: "POST",
+            body: JSON.stringify(reportData)
+        });
+        
+        console.log("Report created:", response);
+        return response;
+    } catch (error) {
+        console.error("Failed to create report:", error);
+        throw error;
+    }
+}
+
+// ============================================================
+// INIT REPORTS
+// ============================================================
+
+function initReports() {
+    const createBtn = document.getElementById('createReportBtn');
+    const cancelBtn = document.getElementById('cancelReportBtn');
+    const addIntentBtn = document.getElementById('addIntentToReportBtn');
+    const reportIntentSelect = document.getElementById('reportIntentSelect');
+    const selectedIntentsBody = document.getElementById('selectedIntentsTableBody');
+    const saveDraftBtn = document.getElementById('saveReportDraftBtn');
+    const submitFinalBtn = document.getElementById('submitReportFinalBtn');
+    
+    // Store selected intents
+    let selectedIntents = [];
+    
+    // Load reports
+    loadReports();
+    
+    // Populate intent dropdown with SUBMITTED intents only
+    function populateIntentDropdown() {
+        if (!reportIntentSelect) return;
+        
+        // Get submitted intents (not yet included in any report)
+        const submittedIntents = PLANTING_INTENTS_DATA.filter(function(intent) {
+            const status = (intent.status || '').toUpperCase();
+            return status === 'SUBMITTED';
+        });
+        
+        reportIntentSelect.innerHTML = '<option value="">Select Planting Intent</option>';
+        
+        submittedIntents.forEach(function(intent) {
+            // Check if already selected
+            if (selectedIntents.some(function(s) { return s.planting_intent_id === intent.planting_intent_id; })) {
+                return;
+            }
+            const option = document.createElement('option');
+            option.value = intent.planting_intent_id;
+            option.textContent = `#${intent.planting_intent_id} - ${intent.commodity} (${intent.farmer_name})`;
+            reportIntentSelect.appendChild(option);
+        });
+    }
+    
+    // Show create report view
+    createBtn?.addEventListener('click', function() {
+        document.getElementById('reportsMainSubview').classList.add('hidden-element');
+        document.getElementById('submitReportSubview').classList.remove('hidden-element');
+        selectedIntents = [];
+        renderSelectedIntents();
+        populateIntentDropdown();
+    });
+    
+    // Cancel report creation
+    cancelBtn?.addEventListener('click', function() {
+        document.getElementById('submitReportSubview').classList.add('hidden-element');
+        document.getElementById('reportsMainSubview').classList.remove('hidden-element');
+        selectedIntents = [];
+        renderSelectedIntents();
+    });
+    
+    // Add intent to report
+    if (addIntentBtn) {
+        addIntentBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("➕ Add row button clicked");
+            
+            const select = document.getElementById("reportIntentSelect");
+            if (!select || !select.value) {
+                alert("Please select a planting intent.");
+                return;
+            }
+
+            const intentId = parseInt(select.value);
+            if (!intentId) {
+                alert("Invalid planting intent.");
+                return;
+            }
+
+            // Find the intent
+            const intent = PLANTING_INTENTS_DATA.find(function(i) {
+                return i.planting_intent_id === intentId;
+            });
+
+            if (!intent) {
+                alert("Planting intent not found.");
+                return;
+            }
+
+            // Initialize selected intents if not exists
+            if (!window.selectedReportIntents) {
+                window.selectedReportIntents = [];
+            }
+
+            // Check if already selected
+            const alreadySelected = window.selectedReportIntents.some(function(item) {
+                return item.planting_intent_id === intentId;
+            });
+
+            if (alreadySelected) {
+                alert("This planting intent is already added.");
+                return;
+            }
+
+            // Add to selected
+            window.selectedReportIntents.push(intent);
+            
+            // Clear the select
+            select.value = '';
+            
+            // Re-render
+            renderSelectedReportIntents();
+            populateReportIntentSelect(); // Refresh dropdown to remove selected items
+            
+            console.log("Intent added:", intent);
+        });
+    }
+    
+    // Render selected intents table
+    function renderSelectedIntents() {
+        if (!selectedIntentsBody) return;
+        
+        if (selectedIntents.length === 0) {
+            selectedIntentsBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="padding:20px; text-align:center; color:#999;">No planting intents selected. Click "Add Row" to add.</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        selectedIntentsBody.innerHTML = selectedIntents.map(function(intent, index) {
+            return `
+                <tr>
+                    <td>#${intent.planting_intent_id}</td>
+                    <td>${escapeHtml(intent.commodity)}</td>
+                    <td>${escapeHtml(formatPlantingVolume(intent.volume))}</td>
+                    <td>${escapeHtml(intent.farmer_name)}</td>
+                    <td class="center-col">
+                        <button class="btn-danger remove-intent-btn" data-index="${index}" style="padding:4px 10px; font-size:12px; background:#C0392B; color:#fff; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        // Attach remove event
+        selectedIntentsBody.querySelectorAll('.remove-intent-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                selectedIntents.splice(index, 1);
+                renderSelectedIntents();
+                populateIntentDropdown();
+            });
+        });
+    }
+    
+    // Save as Draft
+    saveDraftBtn?.addEventListener('click', async function() {
+        if (selectedIntents.length === 0) {
+            alert('Please select at least one planting intent.');
+            return;
+        }
+        
+        const notes = document.getElementById('reportNotesInput')?.value || '';
+        
+        this.disabled = true;
+        this.textContent = 'Saving...';
+        
+        try {
+            const intentIds = selectedIntents.map(function(i) { return i.planting_intent_id; });
+            const report = await createReportFromIntents(intentIds, notes, null);
+            
+            alert('Report saved as draft successfully!');
+            document.getElementById('submitReportSubview').classList.add('hidden-element');
+            document.getElementById('reportsMainSubview').classList.remove('hidden-element');
+            selectedIntents = [];
+            renderSelectedIntents();
+            document.getElementById('reportNotesInput').value = '';
+            
+            // Refresh reports
+            await loadReports();
+            
+        } catch (error) {
+            console.error('Save draft error:', error);
+            alert('Failed to save report: ' + error.message);
+        } finally {
+            this.disabled = false;
+            this.textContent = 'Save as Draft';
+        }
+    });
+    
+    // Submit to Municipal
+    submitFinalBtn?.addEventListener('click', async function() {
+        if (selectedIntents.length === 0) {
+            alert('Please select at least one planting intent.');
+            return;
+        }
+        
+        const notes = document.getElementById('reportNotesInput')?.value || '';
+        
+        if (!confirm('Are you sure you want to submit this report to Municipal for validation?')) {
+            return;
+        }
+        
+        this.disabled = true;
+        this.textContent = 'Submitting...';
+        
+        try {
+            const intentIds = selectedIntents.map(function(i) { return i.planting_intent_id; });
+            const report = await createReportFromIntents(intentIds, notes, null);
+            
+            // Update report status to FOR_MUNICIPAL_VALIDATION
+            await apiRequest(`${API_BASE_URL}/api/raw-plant-reports/${report.report_id}`, {
+                method: "PUT",
+                body: JSON.stringify({ status: "FOR_MUNICIPAL_VALIDATION" })
+            });
+            
+            // Update the intents status (they are now in the report)
+            for (let id of intentIds) {
+                await apiRequest(`${PLANTING_INTENTS_ENDPOINT}${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ status: "FOR_MUNICIPAL_VALIDATION" })
+                });
+            }
+            
+            alert('Report submitted to Municipal successfully!');
+            document.getElementById('submitReportSubview').classList.add('hidden-element');
+            document.getElementById('reportsMainSubview').classList.remove('hidden-element');
+            selectedIntents = [];
+            renderSelectedIntents();
+            document.getElementById('reportNotesInput').value = '';
+            
+            // Refresh data
+            await fetchPlantingIntents();
+            await loadReports();
+            
+        } catch (error) {
+            console.error('Submit error:', error);
+            alert('Failed to submit report: ' + error.message);
+        } finally {
+            this.disabled = false;
+            this.textContent = 'Submit to Municipal';
+        }
+    });
+}
+
+// Make sure to call initReports in DOMContentLoaded
+document.addEventListener("DOMContentLoaded", async () => {
+    // ... existing initialization ...
+    initReports();
+});
+
+// Offtake Success Modal Logic
+const offtakeSuccessModal = document.getElementById("offtakeSuccessModal");
+const closeOfftakeSuccessBtn = document.getElementById("closeOfftakeSuccessBtn");
+
+if (closeOfftakeSuccessBtn && offtakeSuccessModal) {
+    closeOfftakeSuccessBtn.addEventListener("click", () => {
+        offtakeSuccessModal.classList.remove("show");
+        
+        // I-reset ang form o i-redirect pabalik sa listahan
+        const offtakeForm = document.getElementById("submitOfftakeForm");
+        if (offtakeForm) offtakeForm.reset();
+
+        // Itago ang subview ng form/memo at ipakita ang main list
+        const submitOfftakeSubview = document.getElementById("submitOfftakeSubview");
+        const confirmOfftakeSubview = document.getElementById("confirmOfftakeSubview");
+        const offtakeListSubview = document.getElementById("offtakeListSubview");
+
+        if (submitOfftakeSubview) submitOfftakeSubview.classList.add("hidden-element");
+        if (confirmOfftakeSubview) confirmOfftakeSubview.classList.add("hidden-element");
+        if (offtakeListSubview) offtakeListSubview.classList.remove("hidden-element");
+
+        // I-reload ang table kung kinakailangan
+        if (typeof loadOfftakeRequests === "function") {
+            loadOfftakeRequests();
+        }
+    });
+}
+
+// ============================================================
+// REPORTS - LOAD REPORTS (AUTO-SHOW SUBMITTED INTENTS)
+// ============================================================
+
+let allIndividualReports = [];
+let individualFilterStatus = 'all';
+
+async function loadReports() {
+    try {
+        console.log("=== LOAD REPORTS DEBUG ===");
+        console.log("PLANTING_INTENTS_DATA length:", PLANTING_INTENTS_DATA.length);
+        
+        if (!PLANTING_INTENTS_DATA || PLANTING_INTENTS_DATA.length === 0) {
+            console.log("No planting intents data available.");
+            renderFinalizedIntents([]);
+            renderSubmittedReports([]);
+            return;
+        }
+        
+        // DEBUG: Log all intents and their statuses
+        const statusCounts = {};
+        PLANTING_INTENTS_DATA.forEach(function(intent) {
+            const status = String(intent.status || 'UNKNOWN').toUpperCase();
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+        });
+        console.log("Status counts:", statusCounts);
+        
+        // ============================================================
+        // 1. FILTER: ALL SUBMITTED INTENTS (CASE INSENSITIVE)
+        // ============================================================
+        const allSubmitted = PLANTING_INTENTS_DATA.filter(function(intent) {
+            const status = String(intent.status || '').toUpperCase();
+            return status === 'SUBMITTED' || 
+                   status === 'FOR_MUNICIPAL_VALIDATION' ||
+                   status === 'FOR_PROVINCIAL_VALIDATION' ||
+                   status === 'FOR_DA_RFO_VALIDATION' ||
+                   status === 'FINAL_APPROVED' ||
+                   status === 'REVISION_REQUIRED';
+        });
+        
+        console.log("All submitted intents found:", allSubmitted.length);
+        
+        // ============================================================
+        // 2. FINALIZED INTENTS = SUBMITTED
+        // ============================================================
+        const finalizedIntents = allSubmitted.filter(function(intent) {
+            const status = String(intent.status || '').toUpperCase();
+            return status === 'SUBMITTED';
+        }).map(function(intent) {
+            return {
+                report_id: intent.planting_intent_id,  // Use planting_intent_id as report_id
+                planting_intent_id: intent.planting_intent_id,
+                farmer_name: intent.farmer_name || 'Unknown',
+                commodity: intent.commodity || '-',
+                volume: intent.volume || 0,
+                planting_date: intent.planting_date || null,
+                harvest_date: intent.harvest_date || null,
+                submitted_at: intent.updated_at || intent.created_at,
+                finalized_status: intent.finalized_status || 'NOT PLANTED',
+                status: intent.status
+            };
+        });
+        
+        console.log("Finalized intents found:", finalizedIntents.length);
+        
+        // ============================================================
+        // 3. SUBMITTED REPORTS (For validation)
+        // ============================================================
+        const submittedReports = allSubmitted.filter(function(intent) {
+            const status = String(intent.status || '').toUpperCase();
+            return status === 'FOR_MUNICIPAL_VALIDATION' || 
+                   status === 'FOR_PROVINCIAL_VALIDATION' || 
+                   status === 'FOR_DA_RFO_VALIDATION' ||
+                   status === 'FINAL_APPROVED' ||
+                   status === 'REVISION_REQUIRED';
+        }).map(function(intent) {
+            return {
+                report_id: intent.planting_intent_id,
+                title: `${intent.commodity} - ${intent.farmer_name}`,
+                submitted_at: intent.updated_at || intent.created_at,
+                status: intent.status,
+                planting_intent_id: intent.planting_intent_id
+            };
+        });
+        
+        console.log("Submitted reports found:", submittedReports.length);
+        
+        // SORT BY DATE (NEWEST FIRST)
+        finalizedIntents.sort(function(a, b) {
+            const dateA = new Date(a.submitted_at || 0);
+            const dateB = new Date(b.submitted_at || 0);
+            return dateB - dateA;
+        });
+        
+        submittedReports.sort(function(a, b) {
+            const dateA = new Date(a.submitted_at || 0);
+            const dateB = new Date(b.submitted_at || 0);
+            return dateB - dateA;
+        });
+        
+        // ============================================================
+        // 4. STORE AND RENDER
+        // ============================================================
+        allIndividualReports = finalizedIntents;
+        
+        renderFinalizedIntents(finalizedIntents);
+        renderSubmittedReports(submittedReports);
+        
+        console.log("=== LOAD REPORTS COMPLETE ===");
+        
+    } catch (error) {
+        console.error("Failed to load reports:", error);
+    }
+}
+
+/* ============================================================
+   REPORT PAGINATION
+============================================================ */
+
+function renderReportPagination(
+    type,
+    totalCount,
+    currentPage
+) {
+    const tableBodyId =
+        type === "individual"
+            ? "individualReportsTableBody"
+            : "submittedReportsTableBody";
+
+    const tbody =
+        document.getElementById(tableBodyId);
+
+    if (!tbody) return;
+
+    const table =
+        tbody.closest("table");
+
+    if (!table) return;
+
+    const existing =
+        table.parentElement.querySelector(
+            ".report-pagination"
+        );
+
+    if (existing) {
+        existing.remove();
+    }
+
+    if (totalCount <= reportsPerPage) {
+        return;
+    }
+
+    const totalPages =
+        Math.ceil(totalCount / reportsPerPage);
+
+    const pagination =
+        document.createElement("div");
+
+    pagination.className =
+        "pagination-container report-pagination";
+
+    const start =
+        (currentPage - 1) * reportsPerPage + 1;
+
+    const end =
+        Math.min(
+            currentPage * reportsPerPage,
+            totalCount
+        );
+
+    pagination.innerHTML = `
+        <span class="pagination-info">
+            Showing ${start}-${end} of ${totalCount} reports
+        </span>
+
+>>>>>>> Stashed changes
         <div class="pagination-controls">
             <button class="btn-page" id="prevPlantingIntentPageBtn" type="button" disabled>&laquo; Prev</button>
             <div id="plantingIntentPageNumberBtns" class="page-numbers-wrap"></div>

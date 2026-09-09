@@ -1288,6 +1288,33 @@
         </div>
       </section>
 
+<!-- ============================================================
+    OFFTAKE REQUEST CONFIRMATION MODAL
+============================================================ -->
+<div class="modal-overlay" id="confirmOfftakeModal">
+    <div class="modal-box">
+        <h2>Confirm Offtake Request</h2>
+        <p>Are you sure you want to transmit this memorandum?</p>
+        <div class="modal-actions">
+            <button class="btn-outline-report" id="reviewOfftakeModalBtn" type="button">Review</button>
+            <button class="modal-btn-confirm" id="confirmSendOfftakeBtn" type="button">Confirm &amp; Send</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+    OFFTAKE SUCCESS MODAL
+============================================================ -->
+<div class="modal-overlay" id="offtakeSuccessModal">
+    <div class="modal-box">
+        <h2>Offtake Request Submitted</h2>
+        <p>The offtake request has been successfully transmitted.</p>
+        <div class="modal-actions">
+            <button class="modal-btn-confirm" id="closeOfftakeSuccessBtn" type="button">Done</button>
+        </div>
+    </div>
+</div>
+
       <!-- VIEW 2: Planting Intent -->
 <section class="view" id="view-planting-intent">
     <div id="plantingIntentListSubview">
@@ -1673,7 +1700,7 @@
 
             <div class="actions-right-row">
               <button class="btn-outline-report" id="backToSubmitOfftakeBtn" type="button">Edit Details</button>
-              <button class="btn-primary" id="sendOfftakeBtn" type="button">Transmit Memorandum</button>
+              <button class="btn-primary" id="sendOfftakeBtn" type="button">Submit</button>
             </div>
           </div>
         </div>

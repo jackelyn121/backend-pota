@@ -2,7 +2,8 @@ from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey
 from sqlalchemy.orm import relationship
 
 from src.core.database import Base
-
+from src.models.planting_intents import PlantingIntent
+from src.models.offtake_requests import OfftakeRequest
 
 class Farmer(Base):
     __tablename__ = "farmers"

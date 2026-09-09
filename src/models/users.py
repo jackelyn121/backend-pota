@@ -1,5 +1,3 @@
-# src/models/users.py
-
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, func
 from sqlalchemy.orm import relationship
 

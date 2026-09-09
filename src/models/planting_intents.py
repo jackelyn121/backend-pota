@@ -1,3 +1,4 @@
+from src.models.report_planting_intents import ReportPlantingIntent
 from sqlalchemy import (
     Column,
     Integer,
