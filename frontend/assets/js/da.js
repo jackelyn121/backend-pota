@@ -1435,7 +1435,7 @@ function renderVerifiedBuyers(buyers) {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="5">
+                <td colspan="4">
                     No verified buyers found.
                 </td>
             </tr>
@@ -1479,13 +1479,7 @@ function renderVerifiedBuyers(buyers) {
                     </span>
                 </td>
 
-                <td>
-                    <span class="pill">
-                        ${escapeHtml(
-                            getBuyerCommodities(buyer)
-                        )}
-                    </span>
-                </td>
+              
 
                 <td>
                     <span class="status-text-verified">
@@ -2864,12 +2858,7 @@ function renderSystemAlertLogs(alerts) {
                 </div>
 
 
-                <button
-                    class="status-pill-btn unresolved"
-                    type="button"
-                >
-                    Unresolved
-                </button>
+            
 
             </div>
 
