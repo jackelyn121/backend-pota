@@ -920,10 +920,6 @@
         <svg viewBox="0 0 24 24"><path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h18v2H3z"/></svg>
         Monitor ETL Pipeline
       </button>
-      <button class="nav-item" type="button" data-view="alerts">
-        <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-        Alert Log
-      </button>
       <button class="nav-item" type="button" data-view="audit">
         <svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
         Audit Log
@@ -1079,59 +1075,6 @@
               <tr><td colspan="3" class="loading-row">No ETL logs available.</td></tr>
             </tbody>
           </table>
-        </div>
-      </div>
-    </section>
-
-
-    <section class="view" id="view-alerts">
-      <div class="main-header">
-        <h1>System Alert Logs</h1>
-        <div class="search-row">
-          <div class="search-box">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="searchAlerts" placeholder="Search alerts...">
-          </div>
-        </div>
-      </div>
-
-
-      <div class="card alert-container-card">
-        <div class="alert-list" id="alertList">
-          <div class="alert-card" data-severity="high">
-            <div class="alert-top">
-              <div class="alert-title-group">
-                <span class="alert-title">Onion Oversupply Risk — Region III</span>
-                <span class="sev-pill high">High</span>
-              </div>
-              <button class="status-pill-btn unresolved" type="button">Unresolved</button>
-            </div>
-            <p class="alert-desc">Projected supply of 280,000 kg exceeds demand by 40%. Recommend coordinating with buyers or adjusting planting schedules.</p>
-            <div class="alert-stats">
-              <span>Supply: <b>280t</b></span>
-              <span>Demand: <b>200t</b></span>
-              <span>Surplus: <b>+40%</b></span>
-              <span class="alert-date">2026-05-10</span>
-            </div>
-          </div>
-
-
-          <div class="alert-card" data-severity="medium">
-            <div class="alert-top">
-              <div class="alert-title-group">
-                <span class="alert-title">Tomato Oversupply Risk — CALABARZON</span>
-                <span class="sev-pill medium">Medium</span>
-              </div>
-              <button class="status-pill-btn acknowledged" type="button">Acknowledged</button>
-            </div>
-            <p class="alert-desc">Tomato supply in Lipa City area is 31% above projected demand. Monitor closely and notify buyers.</p>
-            <div class="alert-stats">
-              <span>Supply: <b>210t</b></span>
-              <span>Demand: <b>160t</b></span>
-              <span>Surplus: <b>+31%</b></span>
-              <span class="alert-date">2026-05-08</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>

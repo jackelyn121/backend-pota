@@ -1,5 +1,5 @@
 /* ============================================================
-   eSAKA — AEW DASHBOARD
+   E SAKA — AEW DASHBOARD
    Complete Frontend JavaScript
 ============================================================ */
 
@@ -89,6 +89,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupUserProfile();
     initForecastResults();
     initReporting();
+    initNotificationBell();
 
     await fetchFarmers();
     await fetchPlantingIntents();
@@ -6209,3 +6210,216 @@ function updateChart(commodity) {
 }
 
 console.log("Price Trend Chart functions loaded!");
+
+/* ============================================================
+   AEW NOTIFICATION BELL
+============================================================ */
+
+async function initNotificationBell() {
+    const bell = document.getElementById("notificationBell");
+    const dropdown = document.getElementById("notificationDropdown");
+
+    if (!bell || !dropdown) return;
+
+    bell.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        dropdown.classList.toggle("show");
+
+        if (dropdown.classList.contains("show")) {
+            await loadAEWNotifications();
+        }
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!bell.contains(event.target)) {
+            dropdown.classList.remove("show");
+        }
+    });
+
+    // Load once on page load
+    await loadAEWNotifications();
+}
+
+
+/* ============================================================
+   LOAD AEW NOTIFICATIONS
+============================================================ */
+
+async function loadAEWNotifications() {
+    const notificationList = document.getElementById("notificationList");
+    const notificationDot = document.getElementById("notificationDot");
+
+    if (!notificationList) return;
+
+    try {
+        notificationList.innerHTML = `
+            <div class="notification-empty">
+                Loading notifications...
+            </div>
+        `;
+
+        const mapResponse = await fetch(
+            `${API_BASE_URL}/api/planting-intents/municipality-map`,
+            {
+                method: "GET",
+                headers: getAuthHeaders()
+            }
+        );
+
+        if (!mapResponse.ok) {
+            throw new Error(`Map API error: ${mapResponse.status}`);
+        }
+
+        const mapResult = await mapResponse.json();
+
+        if (!mapResult.data || !Array.isArray(mapResult.data)) {
+            showNoNotifications();
+            return;
+        }
+
+        const alerts = [];
+
+        for (const municipalityData of mapResult.data) {
+            const municipality = municipalityData.municipality;
+
+            if (!municipalityData.commodities || !Array.isArray(municipalityData.commodities)) {
+                continue;
+            }
+
+            for (const item of municipalityData.commodities) {
+                const commodity = item.commodity;
+
+                try {
+                    const alertResponse = await fetch(
+                        `${API_BASE_URL}/api/alert-thresholds/oversupply/${encodeURIComponent(commodity)}?municipality=${encodeURIComponent(municipality)}`,
+                        {
+                            method: "GET",
+                            headers: getAuthHeaders()
+                        }
+                    );
+
+                    if (!alertResponse.ok) {
+                        continue;
+                    }
+
+                    const alertData = await alertResponse.json();
+
+                    if (alertData.status === "OVERSUPPLY") {
+                        const supply = Number(alertData.projected_supply || 0);
+                        const demand = Number(alertData.base_demand || 0);
+                        let surplusPercentage = 0;
+
+                        if (demand > 0) {
+                            surplusPercentage = ((supply - demand) / demand) * 100;
+                        }
+
+                        alerts.push({
+                            commodity: alertData.commodity || commodity,
+                            municipality: alertData.municipality || municipality,
+                            supply: supply,
+                            demand: demand,
+                            surplusPercentage: surplusPercentage,
+                            date: new Date()
+                        });
+                    }
+                } catch (error) {
+                    console.warn(`Failed to check ${commodity} in ${municipality}:`, error);
+                }
+            }
+        }
+
+        renderAEWNotifications(alerts);
+
+        if (notificationDot) {
+            notificationDot.style.display = alerts.length > 0 ? "block" : "none";
+        }
+
+    } catch (error) {
+        console.error("Failed to load AEW notifications:", error);
+        notificationList.innerHTML = `
+            <div class="notification-empty">
+                No new notifications.
+            </div>
+        `;
+        if (notificationDot) {
+            notificationDot.style.display = "none";
+        }
+    }
+}
+
+
+/* ============================================================
+   RENDER NOTIFICATIONS
+============================================================ */
+
+function renderAEWNotifications(alerts) {
+    const notificationList = document.getElementById("notificationList");
+
+    if (!notificationList) return;
+
+    if (!alerts.length) {
+        showNoNotifications();
+        return;
+    }
+
+    notificationList.innerHTML = "";
+
+    alerts.forEach(alert => {
+        const item = document.createElement("div");
+        item.className = "notification-item";
+        item.style.padding = "12px 18px";
+        item.style.borderBottom = "1px solid var(--border-light)";
+        item.style.fontSize = "13px";
+
+        item.innerHTML = `
+            <div class="notification-title" style="font-weight:700; color:#C0392B; margin-bottom:4px;">
+                🔴 ${escapeHtml(alert.commodity)} Oversupply Risk
+            </div>
+            <div class="notification-details" style="color:var(--muted); line-height:1.4;">
+                <strong>${escapeHtml(alert.municipality)}</strong><br>
+                Supply: ${formatKg(alert.supply)}<br>
+                Demand: ${formatKg(alert.demand)}<br>
+                Surplus: +${Math.round(alert.surplusPercentage)}%
+            </div>
+        `;
+
+        notificationList.appendChild(item);
+    });
+}
+
+
+/* ============================================================
+   NO NOTIFICATIONS
+============================================================ */
+
+function showNoNotifications() {
+    const notificationList = document.getElementById("notificationList");
+    const notificationDot = document.getElementById("notificationDot");
+
+    if (notificationList) {
+        notificationList.innerHTML = `
+            <div class="notification-empty" style="padding: 20px; text-align: center; color: var(--muted); font-size: 13px;">
+                No new notifications.
+            </div>
+        `;
+    }
+
+    if (notificationDot) {
+        notificationDot.style.display = "none";
+    }
+}
+
+
+/* ============================================================
+   FORMAT KG
+============================================================ */
+
+function formatKg(value) {
+    return `${Number(value || 0).toLocaleString(
+        "en-US",
+        {
+            maximumFractionDigits: 2
+        }
+    )} kg`;
+}
+
