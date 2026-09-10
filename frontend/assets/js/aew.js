@@ -4819,7 +4819,7 @@ function initOfftakeRequest() {
         await submitOfftakeRequest();
     });
 
-    document.getElementById("closeOfftakeSubmittedBtn")?.addEventListener("click", function() {
+    document.getElementById("closeOfftakeSuccessBtn")?.addEventListener("click", function() {
         const modal = document.getElementById("offtakeSuccessModal");
         if (modal) modal.classList.remove("show");
         if (submittedModal) submittedModal.classList.remove("show");
