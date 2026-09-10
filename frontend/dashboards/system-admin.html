@@ -927,7 +927,7 @@
     </div>
 
 
-    <a class="signout" id="signOutButton" onclick="document.getElementById('confirmLogoutModal').style.display='flex'; return false;">
+    <a class="signout" href="../index.html" id="signOutButton">
       <svg viewBox="0 0 24 24"><path d="M10 17l1.41-1.41L8.83 13H20v-2H8.83l2.58-2.59L10 7l-5 5zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
       Sign Out
     </a>
@@ -1079,6 +1079,7 @@
       </div>
     </section>
 
+
     <section class="view" id="view-audit">
       <div class="main-header">
         <h1>System Audit Logs</h1>
@@ -1156,6 +1157,31 @@
 </div>
 
 
+<div class="modal-overlay" id="alertDetailModal">
+  <div class="modal-box alert-detail-box">
+    <div class="alert-modal-header">
+      <h2 id="modalAlertTitle">Alert Details</h2>
+      <span id="modalAlertSev" class="sev-pill high">High</span>
+    </div>
+    <p id="modalAlertDesc" class="alert-desc"></p>
+
+
+    <div class="modal-stats-grid">
+      <div>Supply: <b id="modalAlertSupply"></b></div>
+      <div>Demand: <b id="modalAlertDemand"></b></div>
+      <div>Surplus: <b id="modalAlertSurplus"></b></div>
+      <div>Date Logged: <b id="modalAlertDate"></b></div>
+    </div>
+
+
+    <div class="modal-actions-row">
+      <button class="btn-secondary" id="closeAlertModalBtn" type="button">Close</button>
+      <button class="btn-primary" id="toggleAlertStatusBtn" type="button">Acknowledge Alert</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- CONFIRM USER STATUS MODAL -->
 <div class="modal-overlay" id="confirmStatusModal">
   <div class="modal-box" style="max-width: 420px; text-align: center;">
@@ -1175,9 +1201,9 @@
     <h2>Confirm Sign Out</h2>
     <p>Are you sure you want to sign out of your account?</p>
     <div class="modal-actions">
-  <button class="btn-secondary" id="cancelLogoutBtn" type="button" onclick="document.getElementById('confirmLogoutModal').style.display='none';">Cancel</button>
-  <button class="btn-primary btn-danger" id="finalLogoutBtn" type="button" onclick="localStorage.clear(); window.location.href='../index.html';">Sign Out</button>
-</div>
+      <button class="btn-secondary" id="cancelLogoutBtn" type="button">Cancel</button>
+      <button class="btn-primary btn-danger" id="finalLogoutBtn" type="button">Sign Out</button>
+    </div>
   </div>
 </div>
 
@@ -1188,3 +1214,4 @@
 
 </body>
 </html>
+

@@ -175,45 +175,82 @@ function loadUserInformation() {
 ============================================================ */
 
 function initSidebar() {
+    const hamburgerBtn = document.getElementById("hamburgerBtn");
+    const sidebar = document.getElementById("sidebar");
 
-    const hamburgerBtn =
-        document.getElementById("hamburgerBtn");
+    if (!hamburgerBtn || !sidebar) return;
 
-    const sidebar =
-        document.getElementById("sidebar");
+    let hoverTimer = null;
 
-
-    if (!hamburgerBtn || !sidebar) {
-
-        return;
-
-    }
-
-
-    hamburgerBtn.addEventListener(
-        "click",
-        () => {
-
-            sidebar.classList.toggle("open");
-
-
-            setTimeout(
-                () => {
-
-                    if (mapInstance) {
-
-                        mapInstance.invalidateSize();
-
-                    }
-
-                },
-                300
-            );
-
+    // Open sidebar when hovering hamburger
+    hamburgerBtn.addEventListener("mouseenter", function() {
+        if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
         }
-    );
 
+        setTimeout(function() {
+            sidebar.classList.add("open");
+
+            // Fix Leaflet map size after sidebar opens
+            setTimeout(function() {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                }
+            }, 300);
+
+        }, 100);
+    });
+
+    // Close sidebar when mouse leaves
+    sidebar.addEventListener("mouseleave", function() {
+        hoverTimer = setTimeout(function() {
+            sidebar.classList.remove("open");
+        }, 200);
+    });
+
+    // Cancel close timer when mouse goes back to sidebar
+    sidebar.addEventListener("mouseenter", function() {
+        if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+        }
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", function(event) {
+        const isClickInsideSidebar = sidebar.contains(event.target);
+        const isClickOnHamburger = hamburgerBtn.contains(event.target);
+
+        if (!isClickInsideSidebar && !isClickOnHamburger) {
+            sidebar.classList.remove("open");
+        }
+    });
+
+    // Close sidebar after clicking navigation item
+    sidebar.querySelectorAll(".nav-item").forEach(function(item) {
+        item.addEventListener("click", function() {
+            sidebar.classList.remove("open");
+        });
+    });
+
+    // Close sidebar using Escape key
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") {
+            sidebar.classList.remove("open");
+        }
+    });
+
+    // Close sidebar on sign out
+    const signoutBtn = sidebar.querySelector(".signout");
+
+    if (signoutBtn) {
+        signoutBtn.addEventListener("click", function() {
+            sidebar.classList.remove("open");
+        });
+    }
 }
+
 
 
 /* ============================================================
@@ -1435,7 +1472,7 @@ function renderVerifiedBuyers(buyers) {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="5">
+                <td colspan="4">
                     No verified buyers found.
                 </td>
             </tr>
@@ -1479,13 +1516,7 @@ function renderVerifiedBuyers(buyers) {
                     </span>
                 </td>
 
-                <td>
-                    <span class="pill">
-                        ${escapeHtml(
-                            getBuyerCommodities(buyer)
-                        )}
-                    </span>
-                </td>
+              
 
                 <td>
                     <span class="status-text-verified">
@@ -2518,93 +2549,778 @@ function initAlertThreshold() {
    ALERTS SECTION LOGIC
 ============================================================ */
 
+/* ============================================================
+   ALERTS SECTION LOGIC
+============================================================ */
+
 function initAlertsSection() {
 
-    function toggleCardStatus(button) {
-        const unresolved = button.classList.contains("unresolved");
+    loadSystemAlertLogs();
 
-        if (unresolved) {
-            button.textContent = "Acknowledged";
-            button.classList.remove("unresolved");
-            button.classList.add("acknowledged");
-        } else {
-            button.textContent = "Unresolved";
-            button.classList.remove("acknowledged");
-            button.classList.add("unresolved");
-        }
+}
+
+
+/* ============================================================
+   LOAD SYSTEM ALERT LOGS
+============================================================ */
+
+async function loadSystemAlertLogs() {
+
+    const alertList =
+        document.getElementById("alertList");
+
+    if (!alertList) {
+        return;
     }
 
-    document.querySelectorAll(".status-pill-btn").forEach(button => {
-        button.addEventListener("click", event => {
-            event.stopPropagation();
-            toggleCardStatus(button);
-        });
-    });
+    alertList.innerHTML = `
+        <div style="text-align:center; padding:30px;">
+            Loading system alerts...
+        </div>
+    `;
 
-    document.querySelectorAll(".alert-card").forEach(card => {
-        card.addEventListener("click", () => {
-            currentActiveAlertCard = card;
+    try {
 
-            const title = card.querySelector(".alert-title")?.textContent || "—";
-            const desc = card.querySelector(".alert-desc")?.textContent || "—";
-            const severity = card.querySelector(".sev-pill");
-            const stats = card.querySelectorAll(".alert-stats span b");
-            const date = card.querySelector(".alert-date")?.textContent || "—";
-            const alertStatus = card.querySelector(".status-pill-btn");
+        /* --------------------------------------------------------
+           GET ALL MUNICIPALITY MAP DATA
+        -------------------------------------------------------- */
 
-            const titleElement = document.getElementById("modalAlertTitle");
-            if (titleElement) titleElement.textContent = title;
-
-            const descElement = document.getElementById("modalAlertDesc");
-            if (descElement) descElement.textContent = desc;
-
-            const modalSeverity = document.getElementById("modalAlertSev");
-            if (modalSeverity && severity) {
-                modalSeverity.textContent = severity.textContent;
-                modalSeverity.className = "sev-pill";
-                if (severity.classList.contains("high")) {
-                    modalSeverity.classList.add("high");
-                } else if (severity.classList.contains("medium")) {
-                    modalSeverity.classList.add("medium");
-                } else {
-                    modalSeverity.classList.add("low");
-                }
+        const response = await fetch(
+            `${API_BASE_URL}/api/planting-intents/municipality-map`,
+            {
+                method: "GET",
+                headers: getAuthHeaders(false)
             }
+        );
 
-            const supply = document.getElementById("modalAlertSupply");
-            if (supply) supply.textContent = stats[0]?.textContent || "—";
+        if (!response.ok) {
 
-            const demand = document.getElementById("modalAlertDemand");
-            if (demand) demand.textContent = stats[1]?.textContent || "—";
+            throw new Error(
+                `Failed to load municipality map data: ${response.status}`
+            );
 
-            const surplus = document.getElementById("modalAlertSurplus");
-            if (surplus) surplus.textContent = stats[2]?.textContent || "—";
-
-            const dateElement = document.getElementById("modalAlertDate");
-            if (dateElement) dateElement.textContent = date;
-
-            const toggleButton = document.getElementById("toggleAlertStatusBtn");
-            if (toggleButton && alertStatus) {
-                toggleButton.textContent = alertStatus.classList.contains("unresolved")
-                    ? "Acknowledge Alert"
-                    : "Mark as Unresolved";
-            }
-
-            document.getElementById("alertDetailModal")?.classList.add("show");
-        });
-    });
-
-    const toggleAlertStatusBtn = document.getElementById("toggleAlertStatusBtn");
-    toggleAlertStatusBtn?.addEventListener("click", () => {
-        if (currentActiveAlertCard) {
-            const button = currentActiveAlertCard.querySelector(".status-pill-btn");
-            if (button) {
-                toggleCardStatus(button);
-            }
         }
-        document.getElementById("alertDetailModal")?.classList.remove("show");
-    });
+
+        const result = await response.json();
+
+        if (
+            !result.data ||
+            !Array.isArray(result.data)
+        ) {
+
+            alertList.innerHTML = `
+                <div style="text-align:center; padding:30px;">
+                    No system alerts found.
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        /* --------------------------------------------------------
+           CHECK OVERSUPPLY FOR EVERY COMMODITY
+        -------------------------------------------------------- */
+
+        const alertResults = [];
+
+        for (const municipalityData of result.data) {
+
+            const municipality =
+                municipalityData.municipality;
+
+            if (
+                !municipality ||
+                !Array.isArray(
+                    municipalityData.commodities
+                )
+            ) {
+                continue;
+            }
+
+
+            for (
+                const item
+                of municipalityData.commodities
+            ) {
+
+                const commodity =
+                    item.commodity;
+
+                if (!commodity) {
+                    continue;
+                }
+
+
+                try {
+
+                    const alertResponse =
+                        await fetch(
+                            `${API_BASE_URL}/api/alert-thresholds/oversupply/${encodeURIComponent(commodity)}?municipality=${encodeURIComponent(municipality)}`,
+                            {
+                                method: "GET",
+                                headers: getAuthHeaders(false)
+                            }
+                        );
+
+
+                    if (!alertResponse.ok) {
+
+                        console.warn(
+                            `No oversupply data for ${commodity} - ${municipality}`
+                        );
+
+                        continue;
+
+                    }
+
+
+                    const alertData =
+                        await alertResponse.json();
+
+
+                    console.log(
+                        `Oversupply check: ${commodity} - ${municipality}`,
+                        alertData
+                    );
+
+
+                    /* ------------------------------------------------
+                       ONLY ADD ACTUAL OVERSUPPLY ALERTS
+                    ------------------------------------------------ */
+
+                    if (
+                        String(
+                            alertData.status || ""
+                        ).toUpperCase() === "OVERSUPPLY"
+                    ) {
+
+                        alertResults.push({
+
+                            commodity:
+                                alertData.commodity ||
+                                commodity,
+
+                            municipality:
+                                alertData.municipality ||
+                                municipality,
+
+                            base_demand:
+                                Number(
+                                    alertData.base_demand || 0
+                                ),
+
+                            projected_supply:
+                                Number(
+                                    alertData.projected_supply || 0
+                                ),
+
+                            excess_supply:
+                                Number(
+                                    alertData.excess_supply || 0
+                                ),
+
+                            supply_percentage:
+                                Number(
+                                    alertData.supply_percentage || 0
+                                ),
+
+                            status:
+                                alertData.status,
+
+                            date:
+                                new Date()
+
+                        });
+
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        `Error checking ${commodity} - ${municipality}:`,
+                        error
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        /* --------------------------------------------------------
+           RENDER ALERTS
+        -------------------------------------------------------- */
+
+        renderSystemAlertLogs(
+            alertResults
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "LOAD SYSTEM ALERT LOGS ERROR:",
+            error
+        );
+
+        alertList.innerHTML = `
+            <div style="text-align:center; padding:30px; color:#C0392B;">
+                Unable to load system alerts.
+            </div>
+        `;
+
+    }
+
 }
+
+
+/* ============================================================
+   RENDER SYSTEM ALERT LOGS
+============================================================ */
+
+function renderSystemAlertLogs(alerts) {
+
+    const alertList =
+        document.getElementById("alertList");
+
+    if (!alertList) {
+        return;
+    }
+
+
+    alertList.innerHTML = "";
+
+
+    /* --------------------------------------------------------
+       NO ALERTS
+    -------------------------------------------------------- */
+
+    if (!alerts.length) {
+
+        alertList.innerHTML = `
+            <div style="text-align:center; padding:30px;">
+                No active oversupply alerts.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    /* --------------------------------------------------------
+       RENDER EACH ALERT
+    -------------------------------------------------------- */
+
+    alerts.forEach(alert => {
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "alert-card";
+
+        card.dataset.severity =
+            "high";
+
+
+        const supply =
+            alert.projected_supply;
+
+        const demand =
+            alert.base_demand;
+
+
+        /* --------------------------------------------------------
+           CALCULATE SURPLUS PERCENTAGE
+        -------------------------------------------------------- */
+
+        let surplusPercentage = 0;
+
+        if (demand > 0) {
+
+            surplusPercentage =
+                ((supply - demand) / demand) * 100;
+
+        }
+
+
+        /* --------------------------------------------------------
+           DATE
+        -------------------------------------------------------- */
+
+        const alertDate =
+            new Date(
+                alert.date
+            ).toLocaleDateString(
+                "en-CA"
+            );
+
+
+        /* --------------------------------------------------------
+           DESCRIPTION
+        -------------------------------------------------------- */
+
+        const description =
+            `${alert.commodity} supply in ${alert.municipality} is ${Math.round(surplusPercentage)}% above projected demand. Monitor closely and coordinate with buyers.`;
+
+
+        /* --------------------------------------------------------
+           CARD HTML
+        -------------------------------------------------------- */
+
+        card.innerHTML = `
+
+            <div class="alert-top">
+
+                <div class="alert-title-group">
+
+                    <span class="alert-title">
+                        ${escapeHtml(
+                            alert.commodity
+                        )}
+                        Oversupply Risk —
+                        ${escapeHtml(
+                            alert.municipality
+                        )}
+                    </span>
+
+                    <span class="sev-pill high">
+                        High
+                    </span>
+
+                </div>
+
+
+            
+
+            </div>
+
+
+            <p class="alert-desc">
+                ${escapeHtml(
+                    description
+                )}
+            </p>
+
+
+            <div class="alert-stats">
+
+                <span>
+                    Supply:
+                    <b>
+                        ${formatKg(supply)}
+                    </b>
+                </span>
+
+
+                <span>
+                    Demand:
+                    <b>
+                        ${formatKg(demand)}
+                    </b>
+                </span>
+
+
+                <span>
+                    Surplus:
+                    <b>
+                        +${Math.round(
+                            surplusPercentage
+                        )}%
+                    </b>
+                </span>
+
+
+                <span class="alert-date">
+                    ${alertDate}
+                </span>
+
+            </div>
+
+        `;
+
+
+        /* --------------------------------------------------------
+           STATUS BUTTON
+        -------------------------------------------------------- */
+
+        const statusButton =
+            card.querySelector(
+                ".status-pill-btn"
+            );
+
+
+        statusButton?.addEventListener(
+            "click",
+            event => {
+
+                event.stopPropagation();
+
+                toggleAlertCardStatus(
+                    statusButton
+                );
+
+            }
+        );
+
+
+        /* --------------------------------------------------------
+           OPEN ALERT DETAIL MODAL
+        -------------------------------------------------------- */
+
+        card.addEventListener(
+            "click",
+            () => {
+
+                currentActiveAlertCard =
+                    card;
+
+                openAlertDetailModal(
+                    card
+                );
+
+            }
+        );
+
+
+        alertList.appendChild(card);
+
+    });
+
+}
+
+
+/* ============================================================
+   FORMAT KG → TONS
+============================================================ */
+
+/* ============================================================
+   FORMAT KG
+============================================================ */
+
+function formatKg(value) {
+
+    return `${Number(value || 0).toLocaleString(
+        "en-US",
+        {
+            maximumFractionDigits: 2
+        }
+    )} kg`;
+
+}
+
+
+/* ============================================================
+   TOGGLE ALERT STATUS
+============================================================ */
+
+function toggleAlertCardStatus(button) {
+
+    const unresolved =
+        button.classList.contains(
+            "unresolved"
+        );
+
+
+    if (unresolved) {
+
+        button.textContent =
+            "Acknowledged";
+
+        button.classList.remove(
+            "unresolved"
+        );
+
+        button.classList.add(
+            "acknowledged"
+        );
+
+    } else {
+
+        button.textContent =
+            "Unresolved";
+
+        button.classList.remove(
+            "acknowledged"
+        );
+
+        button.classList.add(
+            "unresolved"
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   OPEN ALERT DETAIL MODAL
+============================================================ */
+
+function openAlertDetailModal(card) {
+
+    const title =
+        card.querySelector(
+            ".alert-title"
+        )?.textContent || "—";
+
+
+    const desc =
+        card.querySelector(
+            ".alert-desc"
+        )?.textContent || "—";
+
+
+    const severity =
+        card.querySelector(
+            ".sev-pill"
+        );
+
+
+    const stats =
+        card.querySelectorAll(
+            ".alert-stats span b"
+        );
+
+
+    const date =
+        card.querySelector(
+            ".alert-date"
+        )?.textContent || "—";
+
+
+    const alertStatus =
+        card.querySelector(
+            ".status-pill-btn"
+        );
+
+
+    const titleElement =
+        document.getElementById(
+            "modalAlertTitle"
+        );
+
+    if (titleElement) {
+
+        titleElement.textContent =
+            title;
+
+    }
+
+
+    const descElement =
+        document.getElementById(
+            "modalAlertDesc"
+        );
+
+    if (descElement) {
+
+        descElement.textContent =
+            desc;
+
+    }
+
+
+    const modalSeverity =
+        document.getElementById(
+            "modalAlertSev"
+        );
+
+
+    if (
+        modalSeverity &&
+        severity
+    ) {
+
+        modalSeverity.textContent =
+            severity.textContent;
+
+        modalSeverity.className =
+            "sev-pill";
+
+        modalSeverity.classList.add(
+            severity.classList.contains(
+                "high"
+            )
+                ? "high"
+                : "medium"
+        );
+
+    }
+
+
+    const supply =
+        document.getElementById(
+            "modalAlertSupply"
+        );
+
+    if (supply) {
+
+        supply.textContent =
+            stats[0]?.textContent || "—";
+
+    }
+
+
+    const demand =
+        document.getElementById(
+            "modalAlertDemand"
+        );
+
+    if (demand) {
+
+        demand.textContent =
+            stats[1]?.textContent || "—";
+
+    }
+
+
+    const surplus =
+        document.getElementById(
+            "modalAlertSurplus"
+        );
+
+    if (surplus) {
+
+        surplus.textContent =
+            stats[2]?.textContent || "—";
+
+    }
+
+
+    const dateElement =
+        document.getElementById(
+            "modalAlertDate"
+        );
+
+    if (dateElement) {
+
+        dateElement.textContent =
+            date;
+
+    }
+
+
+    const toggleButton =
+        document.getElementById(
+            "toggleAlertStatusBtn"
+        );
+
+
+    if (
+        toggleButton &&
+        alertStatus
+    ) {
+
+        toggleButton.textContent =
+            alertStatus.classList.contains(
+                "unresolved"
+            )
+                ? "Acknowledge Alert"
+                : "Mark as Unresolved";
+
+    }
+
+
+    document
+        .getElementById(
+            "alertDetailModal"
+        )
+        ?.classList.add("show");
+
+}
+
+
+/* ============================================================
+   SEARCH ALERTS
+============================================================ */
+
+const searchAlerts =
+    document.getElementById(
+        "searchAlerts"
+    );
+
+searchAlerts?.addEventListener(
+    "input",
+    () => {
+
+        const searchTerm =
+            searchAlerts.value
+                .toLowerCase()
+                .trim();
+
+
+        document
+            .querySelectorAll(
+                "#alertList .alert-card"
+            )
+            .forEach(card => {
+
+                const text =
+                    card.textContent
+                        .toLowerCase();
+
+
+                card.style.display =
+                    text.includes(
+                        searchTerm
+                    )
+                        ? ""
+                        : "none";
+
+            });
+
+    }
+);
+
+
+/* ============================================================
+   ALERT DETAIL MODAL TOGGLE
+============================================================ */
+
+document
+    .getElementById(
+        "toggleAlertStatusBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            if (
+                currentActiveAlertCard
+            ) {
+
+                const button =
+                    currentActiveAlertCard
+                        .querySelector(
+                            ".status-pill-btn"
+                        );
+
+                if (button) {
+
+                    toggleAlertCardStatus(
+                        button
+                    );
+
+                }
+
+            }
+
+
+            document
+                .getElementById(
+                    "alertDetailModal"
+                )
+                ?.classList.remove(
+                    "show"
+                );
+
+        }
+    );
 
 
 /* ============================================================

@@ -35,7 +35,7 @@ class PlantingIntent(Base):
     notes = Column(Text, nullable=True)  # NEW FIELD
     attachment_path = Column(String(500), nullable=True)  # NEW FIELD
 
-    status = Column(String(20), nullable=True, default="Draft")
+    status = Column(String(20), nullable=True, default="DRAFT")
 
     created_at = Column(
         TIMESTAMP,
@@ -53,4 +53,3 @@ class PlantingIntent(Base):
         back_populates="planting_intent",
     )
 
-    report_planting_intents = relationship("ReportPlantingIntent", back_populates="planting_intent")

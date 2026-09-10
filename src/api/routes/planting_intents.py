@@ -14,6 +14,7 @@ from src.models.report_submission import ReportSubmission
 from src.models.report_planting_intents import ReportPlantingIntent
 from src.models.raw_plant_reports import RawPlantReport
 from src.models.users import User
+from src.models.alert_threshold_configs import AlertThresholdConfig
 
 from src.api.schemas.planting_intents import (
     PlantingIntentCreate,
@@ -300,15 +301,102 @@ def create_planting_intent(
     
     db_planting = PlantingIntent(
         **planting_intent.model_dump(),
-        status="Draft"
+        status="DRAFT"
     )
     
     db.add(db_planting)
     db.commit()
     db.refresh(db_planting)
     
-    return build_planting_intent_response(db_planting, farmer, "Draft")
+    return build_planting_intent_response(db_planting, farmer, "DRAFT")
 
+@router.get("/municipality-map")
+def get_municipality_map_data(
+    db: Session = Depends(get_db),
+):
+    """
+    Municipality-level supply status for the DA-RFO map.
+    """
+
+    rows = (
+        db.query(
+            Farmer.municipality,
+            PlantingIntent.commodity,
+            func.sum(PlantingIntent.volume).label("total_supply"),
+        )
+        .join(
+            PlantingIntent,
+            PlantingIntent.farmer_id == Farmer.farmer_id,
+        )
+        .filter(
+            PlantingIntent.status == "SUBMITTED",
+            Farmer.municipality.isnot(None),
+            Farmer.municipality != "",
+        )
+        .group_by(
+            Farmer.municipality,
+            PlantingIntent.commodity,
+        )
+        .all()
+    )
+
+    configs = (
+        db.query(AlertThresholdConfig)
+        .filter(AlertThresholdConfig.is_active.is_(True))
+        .all()
+    )
+
+    config_map = {
+        config.commodity.lower(): config
+        for config in configs
+    }
+
+    municipality_data = {}
+
+    for row in rows:
+        municipality = row.municipality.strip()
+        commodity = row.commodity.strip()
+        total_supply = float(row.total_supply or 0)
+
+        config = config_map.get(commodity.lower())
+
+        if not config:
+            continue
+
+        base_demand = float(config.base_demand or 0)
+        threshold_percent = float(
+            config.oversupply_threshold or 100
+        )
+
+        alert_limit = (
+            base_demand * threshold_percent / 100
+        )
+
+       
+        if total_supply > alert_limit:
+            status = "OVERSUPPLY"
+        elif total_supply > base_demand:
+            status = "SURPLUS"
+        elif total_supply < base_demand:
+            status = "DEFICIT"
+        else:
+            status = "BALANCE"
+
+        if municipality not in municipality_data:
+            municipality_data[municipality] = {
+                "municipality": municipality,
+                "commodities": [],
+            }
+
+        municipality_data[municipality]["commodities"].append({
+            "commodity": commodity,
+            "status": status,
+            "estimated": True,
+        })
+
+    return {
+        "data": list(municipality_data.values())
+    }
 
 # ============================================================
 # GET ATTACHMENT
@@ -486,7 +574,17 @@ def update_planting_intent(
     if not db_planting:
         raise HTTPException(status_code=404, detail="Planting intent not found")
     
+    if db_planting.status != "DRAFT":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot edit a planting intent that has already been submitted."
+        )
+    
     update_data = planting_intent.model_dump(exclude_unset=True)
+    
+    # Don't allow status update through this endpoint
+    if "status" in update_data:
+        del update_data["status"]
     
     if "farmer_id" in update_data:
         farmer = db.query(Farmer).filter(
@@ -506,9 +604,8 @@ def update_planting_intent(
     return build_planting_intent_response(
         db_planting,
         farmer,
-        db_planting.status or "Draft"
+        db_planting.status or "DRAFT"
     )
-
 
 # ============================================================
 # DELETE PLANTING INTENT
@@ -532,6 +629,12 @@ def delete_planting_intent(
     
     if not db_planting:
         raise HTTPException(status_code=404, detail="Planting intent not found")
+    
+    if db_planting.status != "DRAFT":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete a planting intent that has already been submitted."
+        )
     
     # Delete the attachment file if it exists
     if db_planting.attachment_path:
@@ -559,7 +662,8 @@ def submit_planting_intent(
     db: Session = Depends(get_db)
 ):
     """
-    Submit a planting intent - moves from Draft to Submitted status.
+    Submit a planting intent - moves from DRAFT to SUBMITTED status.
+    Once submitted, it cannot be edited or deleted.
     """
     
     db_planting = (
@@ -575,15 +679,57 @@ def submit_planting_intent(
     if not db_planting:
         raise HTTPException(status_code=404, detail="Planting intent not found")
     
-    if db_planting.status != "Draft":
-        raise HTTPException(status_code=400, detail="Only Draft intents can be submitted")
+    if db_planting.status != "DRAFT":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot submit a planting intent with status: {db_planting.status}"
+        )
     
-    db_planting.status = "Submitted"
+    db_planting.status = "SUBMITTED"
     db.commit()
     db.refresh(db_planting)
     
     return {
         "message": "Planting intent submitted successfully",
+        "planting_intent_id": db_planting.planting_intent_id,
+        "status": db_planting.status
+    }
+
+@router.post("/{planting_intent_id}/pull")
+def pull_planting_intent(
+    planting_intent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Pull a planting intent back to DRAFT from SUBMITTED.
+    """
+    
+    db_planting = (
+        db.query(PlantingIntent)
+        .join(Farmer, PlantingIntent.farmer_id == Farmer.farmer_id)
+        .filter(
+            PlantingIntent.planting_intent_id == planting_intent_id,
+            Farmer.aew_id == current_user.user_id
+        )
+        .first()
+    )
+    
+    if not db_planting:
+        raise HTTPException(status_code=404, detail="Planting intent not found")
+    
+    if db_planting.status != "SUBMITTED":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot pull a planting intent with status: {db_planting.status}"
+        )
+    
+    db_planting.status = "DRAFT"
+    db.commit()
+    db.refresh(db_planting)
+    
+    return {
+        "message": "Planting intent pulled back to DRAFT",
         "planting_intent_id": db_planting.planting_intent_id,
         "status": db_planting.status
     }
