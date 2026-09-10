@@ -1014,50 +1014,148 @@
 
 
 <script>
-  // SIDEBAR & VIEW SWITCHING
-  const hamburgerBtn = document.getElementById('hamburgerBtn');
-  const sidebar = document.getElementById('sidebar');
 
+  // ============================================================
+  // SIDEBAR
+  // ============================================================
 
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const sidebar = document.getElementById("sidebar");
 
+  if (hamburgerBtn && sidebar) {
 
-  hamburgerBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-    setTimeout(() => {
-      if (window.leafletMap) window.leafletMap.invalidateSize();
-    }, 300);
-  });
+    let hoverTimer = null;
 
+    hamburgerBtn.addEventListener("mouseenter", function () {
 
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
 
+      sidebar.classList.add("open");
 
-  const navButtons = document.querySelectorAll('.nav-item[data-view]');
-  const views = document.querySelectorAll('.view');
+      setTimeout(function () {
+        if (window.leafletMap) {
+          window.leafletMap.invalidateSize();
+        }
+      }, 300);
 
+    });
 
+    sidebar.addEventListener("mouseenter", function () {
 
+      if (hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
 
-  function switchView(viewKey){
-    views.forEach(v => v.classList.remove('active-view'));
-    document.getElementById('view-' + viewKey).classList.add('active-view');
-    navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewKey));
+    });
 
+    sidebar.addEventListener("mouseleave", function () {
 
+      hoverTimer = setTimeout(function () {
+        sidebar.classList.remove("open");
+      }, 200);
 
+    });
 
-    if (viewKey === 'map' && window.leafletMap){
-      setTimeout(() => window.leafletMap.invalidateSize(), 50);
+    document.addEventListener("click", function (event) {
+
+      const isInsideSidebar =
+        sidebar.contains(event.target);
+
+      const isHamburger =
+        hamburgerBtn.contains(event.target);
+
+      if (!isInsideSidebar && !isHamburger) {
+        sidebar.classList.remove("open");
+      }
+
+    });
+
+    sidebar.querySelectorAll(".nav-item").forEach(function (item) {
+
+      item.addEventListener("click", function () {
+        sidebar.classList.remove("open");
+      });
+
+    });
+
+    document.addEventListener("keydown", function (event) {
+
+      if (event.key === "Escape") {
+        sidebar.classList.remove("open");
+      }
+
+    });
+
+    const signoutBtn =
+      sidebar.querySelector(".signout");
+
+    if (signoutBtn) {
+
+      signoutBtn.addEventListener("click", function () {
+        sidebar.classList.remove("open");
+      });
+
     }
+
   }
 
 
+  // ============================================================
+  // VIEW SWITCHING
+  // ============================================================
+
+  const navButtons =
+    document.querySelectorAll(".nav-item[data-view]");
+
+  const views =
+    document.querySelectorAll(".view");
 
 
-  navButtons.forEach(btn => {
-    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  function switchView(viewKey) {
+
+    views.forEach(function (view) {
+      view.classList.remove("active-view");
+    });
+
+    const targetView =
+      document.getElementById("view-" + viewKey);
+
+    if (targetView) {
+      targetView.classList.add("active-view");
+    }
+
+    navButtons.forEach(function (btn) {
+      btn.classList.toggle(
+        "active",
+        btn.dataset.view === viewKey
+      );
+    });
+
+    if (
+      viewKey === "map" &&
+      window.leafletMap
+    ) {
+
+      setTimeout(function () {
+        window.leafletMap.invalidateSize();
+      }, 50);
+
+    }
+
+  }
+
+
+  navButtons.forEach(function (btn) {
+
+    btn.addEventListener("click", function () {
+      switchView(btn.dataset.view);
+    });
+
   });
-
-
 
 
   // MAP INITIALIZATION
