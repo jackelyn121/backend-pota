@@ -1394,7 +1394,7 @@
                 <span id="draftCount" style="background:var(--green); color:#fff; border-radius:50%; padding:2px 8px; font-size:11px; margin-left:6px;">0</span>
             </button>
             <button class="sub-tab-btn" data-tab="submitted" type="button" style="padding:8px 20px; border:none; background:transparent; font-weight:600; cursor:pointer; color:var(--muted);">
-                Submitted Intents
+                Finalized Intents
                 <span id="submittedCount" style="background:var(--muted); color:#fff; border-radius:50%; padding:2px 8px; font-size:11px; margin-left:6px;">0</span>
             </button>
         </div>
@@ -1414,6 +1414,7 @@
                     <table>
                         <thead>
                             <tr>
+                              <th>Intent ID</th>
                                 <th>Farmer Name</th>
                                 <th>Commodity</th>
                                 <th>Est. Volume</th>
@@ -1440,7 +1441,7 @@
         <div id="submittedIntentsContainer" class="sub-tab-content" style="display:none;">
             <div class="card">
                 <div class="card-title" style="font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;">
-                    Submitted Planting Intents
+                    Finalized Planting Intents
                     <span style="font-weight:400; color:var(--muted); font-size:12px; margin-left:8px;">
                         (Click a row to view details)
                     </span>
@@ -1449,6 +1450,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Intent ID</th>
                                 <th>Farmer Name</th>
                                 <th>Commodity</th>
                                 <th>Est. Volume</th>
@@ -1507,15 +1509,12 @@
                         <select id="piCommodity" required>
                             <option value="">Select Commodity</option>
                             <option value="Tomato">Tomato</option>
-                            <option value="Eggplant">Eggplant</option>
+                            
                             <option value="Red Onion">Red Onion</option>
                             <option value="White Onion">White Onion</option>
-                            <option value="Yellow Corn">Yellow Corn</option>
+                          
                             <option value="Squash">Squash</option>
-                            <option value="Garlic">Garlic</option>
-                            <option value="String Beans">String Beans</option>
-                            <option value="Cabbage">Cabbage</option>
-                            <option value="Pepper">Pepper</option>
+                           
                         </select>
                     </div>
                     <div class="form-field-item">
